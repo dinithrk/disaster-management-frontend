@@ -61,7 +61,6 @@ const Alerts = () => {
                 <th>Severity</th>
                 <th>Alert ID</th>
                 <th>Sensor ID</th>
-                <th>Status</th>
                 <th>Measurement</th>
                 <th>Threshold</th>
                 <th>Time</th>
@@ -70,7 +69,7 @@ const Alerts = () => {
             <tbody>
               {alerts.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="empty-state">No active alerts. System is normal.</td>
+                  <td colSpan="6" className="empty-state">No active alerts. System is normal.</td>
                 </tr>
               ) : (
                 alerts.map(alert => {
@@ -92,11 +91,6 @@ const Alerts = () => {
                         {alert.alert_id.split('-')[0]}...
                       </td>
                       <td className="font-medium text-white">{alert.sensor_id}</td>
-                      <td>
-                        <span className={`status-badge status-${alert.status.toLowerCase()}`}>
-                          {alert.status}
-                        </span>
-                      </td>
                       <td className="font-mono severity-text" style={{ color: config.color }}>
                         {alert.measurement.toFixed(1)}
                       </td>
