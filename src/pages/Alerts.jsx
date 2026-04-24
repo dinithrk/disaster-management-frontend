@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { getActiveAlerts } from '../services/mockData';
+import { getActiveAlerts } from '../services/alertsApi';
 import { ShieldAlert, AlertOctagon, AlertTriangle, AlertCircle, RefreshCw } from 'lucide-react';
 import './Alerts.css';
 
 const SeverityConfig = {
   'HIGH_CRITICAL': { color: 'var(--severity-hi-critical)', glow: 'var(--glow-hi-critical)', icon: ShieldAlert, label: 'High Critical' },
-  'HI_WARNING': { color: 'var(--severity-hi-warning)', glow: 'var(--glow-hi-warning)', icon: AlertOctagon, label: 'High Warning' },
+  'HIGH_WARNING': { color: 'var(--severity-hi-warning)', glow: 'var(--glow-hi-warning)', icon: AlertOctagon, label: 'High Warning' },
   'LOW_WARNING': { color: 'var(--severity-low-warning)', glow: 'var(--glow-low-warning)', icon: AlertTriangle, label: 'Low Warning' },
   'LOW_CRITICAL': { color: 'var(--severity-low-critical)', glow: 'var(--glow-low-critical)', icon: AlertCircle, label: 'Low Critical' }
 };
@@ -75,13 +75,13 @@ const Alerts = () => {
                 alerts.map(alert => {
                   const config = SeverityConfig[alert.severity];
                   const Icon = config.icon;
-                  
+
                   return (
                     <tr key={alert.alert_id} className="alert-row">
                       <td>
-                        <div className="severity-badge" style={{ 
+                        <div className="severity-badge" style={{
                           '--badge-color': config.color,
-                          '--badge-glow': config.glow 
+                          '--badge-glow': config.glow
                         }}>
                           <Icon size={16} />
                           <span>{config.label}</span>
