@@ -37,6 +37,7 @@ const SensorTypes = () => {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     fetchTypes();
   }, []);
