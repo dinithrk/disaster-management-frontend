@@ -1,32 +1,26 @@
-const BASE_URL = "http://localhost:8092/sensor-types";
+import metadataApi from './metadataApi';
+
+const BASE_URL = "/sensor-types";
 
 export const getSensorTypes = async () => {
-    const res = await fetch(BASE_URL);
-    return res.json();
+    const res = await metadataApi.get(BASE_URL);
+    return res.data;
 };
 export const getSensorTypeById = async (id) => {
-    const res = await fetch(`${BASE_URL}/${id}`);
-    return res.json();
+    const res = await metadataApi.get(`${BASE_URL}/${id}`);
+    return res.data;
 };
 
 export const createSensorType = async (data) => {
-    const res = await fetch(BASE_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-    });
-    return res.json();
+    const res = await metadataApi.post(BASE_URL, data);
+    return res.data;
 };
 
 export const updateSensorType = async (id, data) => {
-    const res = await fetch(`${BASE_URL}/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-    });
-    return res.json();
+    const res = await metadataApi.put(`${BASE_URL}/${id}`, data);
+    return res.data;
 };
 
 export const deleteSensorType = async (id) => {
-    await fetch(`${BASE_URL}/${id}`, { method: "DELETE" });
+    await metadataApi.delete(`${BASE_URL}/${id}`);
 };

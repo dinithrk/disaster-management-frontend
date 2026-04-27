@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { getSensors, createSensor, updateSensor, deleteSensor, getSites, getSensorTypes, getSensorById } from '../../services/sensorService';
+import { getSensors, createSensor, updateSensor, deleteSensor, getSensorById } from '../../services/sensorService';
+import { getSites } from '../../services/siteService';
+import { getSensorTypes } from '../../services/sensorTypeService';
 import { Modal } from '../../components/UI/Modal';
 import { Plus, Edit2, Trash2, RadioReceiver, Eye, Search } from 'lucide-react';
 import './Crud.css';
@@ -21,6 +23,7 @@ const Sensors = () => {
 
     // Form State
     const [formData, setFormData] = useState({
+        sensorId: '',
         sensorTypeId: '',
         siteId: '',
         longitude: '',
@@ -65,21 +68,23 @@ const Sensors = () => {
         if (sensor) {
             setCurrentSensor(sensor);
             setFormData({
-                sensorTypeId: sensor.sensorType?.sensorTypeId ?? '',
-                siteId: sensor.site?.siteId ?? '',
+                sensorId: sensor.sensorId || sensor.sensor_id || '',
+                sensorTypeId: sensor.sensorType?.sensorTypeId || sensor.sensorType?.sensor_type_id || sensor.sensor_type_id || '',
+                siteId: sensor.site?.siteId || sensor.site?.site_id || sensor.site_id || '',
                 longitude: sensor.longitude,
                 latitude: sensor.latitude,
-                unitOfMeasure: sensor.unitOfMeasure,
-                thresholdLowWarning: sensor.thresholdLowWarning,
-                thresholdLowCritical: sensor.thresholdLowCritical,
-                thresholdHighWarning: sensor.thresholdHighWarning,
-                thresholdHighCritical: sensor.thresholdHighCritical
+                unitOfMeasure: sensor.unitOfMeasure || sensor.unit_of_measure,
+                thresholdLowWarning: sensor.thresholdLowWarning || sensor.threshold_low_warning,
+                thresholdLowCritical: sensor.thresholdLowCritical || sensor.threshold_low_critical,
+                thresholdHighWarning: sensor.thresholdHighWarning || sensor.threshold_high_warning,
+                thresholdHighCritical: sensor.thresholdHighCritical || sensor.threshold_high_critical
             });
         } else {
             setCurrentSensor(null);
             setFormData({
-                sensorTypeId: types.length ? types[0].sensorTypeId : 0,
-                siteId: sites.length ? sites[0].siteId : 0,
+                sensorId: '',
+                sensorTypeId: types.length ? (types[0].sensorTypeId || types[0].sensor_type_id) : 0,
+                siteId: sites.length ? (sites[0].siteId || sites[0].site_id) : 0,
                 longitude: '',
                 latitude: '',
                 unitOfMeasure: '',
@@ -105,12 +110,13 @@ const Sensors = () => {
         }
         setLoading(true);
         try {
-            const data = await getSensorById(searchId);
-            if (data && data.id) {
-                setSensors([data]);
-            } else {
-                setSensors([]);
-            }
+            const allSensors = await getSensors();
+            const sensArray = Array.isArray(allSensors) ? allSensors : [];
+            const filtered = sensArray.filter(s => {
+                const sid = s.sensorId || s.sensor_id;
+                return sid ? String(sid).toLowerCase().includes(searchId.toLowerCase()) : false;
+            });
+            setSensors(filtered);
         } catch (err) {
             console.error("Failed to search sensor:", err);
             setSensors([]);
@@ -133,6 +139,7 @@ const Sensors = () => {
         e.preventDefault();
 
         const payload = {
+            sensorId: formData.sensorId,
             sensorType: { sensorTypeId: Number(formData.sensorTypeId) },
             site: { siteId: Number(formData.siteId) },
             longitude: Number(formData.longitude),
@@ -144,13 +151,19 @@ const Sensors = () => {
             thresholdHighCritical: Number(formData.thresholdHighCritical),
         };
 
-        if (currentSensor) {
-            await updateSensor(currentSensor.id, payload);
-        } else {
-            await createSensor(payload);
+        try {
+            if (currentSensor) {
+                const targetId = currentSensor.sensorId || currentSensor.sensor_id;
+                await updateSensor(targetId, payload);
+            } else {
+                await createSensor(payload);
+            }
+            handleCloseModal();
+            fetchData(); // Refetch to show new data
+        } catch (err) {
+            console.error("Submission failed:", err);
+            alert("Error saving sensor: " + (err.response?.data?.message || err.message || "Unknown error"));
         }
-        handleCloseModal();
-        fetchData(); // Just refetching all to be safe though we only need sensors
     };
 
     const handleDelete = async (id) => {
@@ -213,11 +226,11 @@ const Sensors = () => {
                         </thead>
                         <tbody>
                             {sensors.map(sensor => (
-                                <tr key={sensor.id} className="crud-row">
+                                <tr key={sensor.sensorId} className="crud-row">
                                     <td className="font-mono text-white font-medium">
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <RadioReceiver size={16} className="text-muted" />
-                                            {sensor.id}
+                                            {sensor.sensorId}
                                         </div>
                                     </td>
                                     <td>{getTypeName(sensor.sensorType?.sensorTypeId)}</td>
@@ -226,13 +239,13 @@ const Sensors = () => {
                                     <td className="font-mono text-muted">{sensor.thresholdLowWarning} / {sensor.thresholdHighWarning}</td>
                                     <td className="font-mono text-muted">{sensor.thresholdLowCritical} / {sensor.thresholdHighCritical}</td>
                                     <td className="actions-cell">
-                                        <button className="action-btn view" onClick={() => handleView(sensor.id)} title="View">
+                                        <button className="action-btn view" onClick={() => handleView(sensor.sensorId)} title="View">
                                             <Eye size={16} />
                                         </button>
                                         <button className="action-btn edit" onClick={() => handleOpenModal(sensor)} title="Edit">
                                             <Edit2 size={16} />
                                         </button>
-                                        <button className="action-btn delete" onClick={() => handleDelete(sensor.id)} title="Delete">
+                                        <button className="action-btn delete" onClick={() => handleDelete(sensor.sensorId)} title="Delete">
                                             <Trash2 size={16} />
                                         </button>
                                     </td>
@@ -255,6 +268,15 @@ const Sensors = () => {
             >
                 <form onSubmit={handleSubmit} className="crud-form">
                     <div className="form-group">
+                        <label>Sensor ID</label>
+                        <input
+                            required type="text"
+                            value={formData.sensorId}
+                            onChange={e => setFormData({ ...formData, sensorId: e.target.value })}
+                            disabled={!!currentSensor}
+                        />
+                    </div>
+                    <div className="form-group">
                         <label>Sensor Type</label>
                         <select
                             required
@@ -263,7 +285,10 @@ const Sensors = () => {
                                 setFormData({ ...formData, sensorTypeId: Number(e.target.value) })
                             }
                         >
-                            {types.map(t => <option key={t.sensorTypeId} value={t.sensorTypeId}>{t.type}</option>)}
+                            {types.map(t => {
+                                const tId = t.sensorTypeId || t.sensor_type_id;
+                                return <option key={tId} value={tId}>{t.type}</option>
+                            })}
                         </select>
                     </div>
                     <div className="form-group">
@@ -275,7 +300,10 @@ const Sensors = () => {
                                 setFormData({ ...formData, siteId: Number(e.target.value) })
                             }
                         >
-                            {sites.map(s => <option key={s.siteId} value={s.siteId}>{s.siteName}</option>)}
+                            {sites.map(s => {
+                                const sId = s.siteId || s.site_id;
+                                return <option key={sId} value={sId}>{s.siteName || s.site_name}</option>
+                            })}
                         </select>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -356,7 +384,7 @@ const Sensors = () => {
             >
                 {viewSensorData ? (
                     <div style={{ padding: '1rem', lineHeight: '1.6' }}>
-                        <p><strong>Sensor ID:</strong> {viewSensorData.id}</p>
+                        <p><strong>Sensor ID:</strong> {viewSensorData.sensorId}</p>
                         <p><strong>Sensor Type:</strong> {viewSensorData.sensorType?.type || getTypeName(viewSensorData.sensorType?.sensorTypeId)}</p>
                         <p><strong>Site Location:</strong> {viewSensorData.site?.siteName || getSiteName(viewSensorData.site?.siteId)}</p>
                         <p><strong>Coordinates:</strong> {viewSensorData.latitude}, {viewSensorData.longitude}</p>

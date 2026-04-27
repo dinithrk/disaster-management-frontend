@@ -13,6 +13,12 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      // Forward /metadata-api to the metadata service.
+      '/metadata-api': {
+        target: 'http://localhost:8092',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/metadata-api/, ''),
+      },
     },
   },
 })
