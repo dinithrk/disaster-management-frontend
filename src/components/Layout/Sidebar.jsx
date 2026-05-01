@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, AlertTriangle, MapPin, Activity, RadioReceiver } from 'lucide-react';
+import { LayoutDashboard, AlertTriangle, MapPin, Activity, RadioReceiver, LineChart } from 'lucide-react';
 import './Sidebar.css';
 
 const Sidebar = () => {
@@ -10,6 +10,7 @@ const Sidebar = () => {
     { path: '/metadata/sites', icon: MapPin, label: 'Sites' },
     { path: '/metadata/sensor-types', icon: Activity, label: 'Sensor Types' },
     { path: '/metadata/sensors', icon: RadioReceiver, label: 'Sensors' },
+    { path: '/telemetry-data', icon: LineChart, label: 'Telemetry Data' },
   ];
 
   return (
@@ -17,15 +18,15 @@ const Sidebar = () => {
       <div className="sidebar-header">
         <div className="logo-container">
           <div className="logo-icon glass-card" />
-          <h2>Disaster<br/>Response</h2>
+          <h2>A.T.L.A.S.<br />Response</h2>
         </div>
       </div>
-      
+
       <nav className="sidebar-nav">
         {navItems.map(({ path, icon: Icon, label }) => (
-          <NavLink 
-            key={path} 
-            to={path} 
+          <NavLink
+            key={path}
+            to={path}
             className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
           >
             <Icon className="nav-icon" size={20} />
@@ -33,7 +34,7 @@ const Sidebar = () => {
           </NavLink>
         ))}
       </nav>
-      
+
       <div className="sidebar-footer">
         <div className="system-status">
           <span className="status-indicator active animate-pulse-glow" style={{ backgroundColor: 'var(--severity-success)' }}></span>
