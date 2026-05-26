@@ -2,11 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { getSensorTypes, createSensorType, updateSensorType, deleteSensorType, getSensorTypeById } from '../../services/sensorTypeService';
 import { Modal } from '../../components/UI/Modal';
 import { Plus, Edit2, Trash2, Activity, Eye, Search } from 'lucide-react';
+import ConnectionError from '../../components/UI/ConnectionError';
+import { useSystemStatus } from '../../context/SystemStatusContext';
 import './Crud.css';
 
 const SensorTypes = () => {
   const [sensorTypes, setSensorTypes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { setOnlineStatus } = useSystemStatus();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentType, setCurrentType] = useState(null);
@@ -23,6 +27,7 @@ const SensorTypes = () => {
   const fetchTypes = async () => {
     try {
       setLoading(true);
+      setError(null);
 
       const res = await fetch("http://localhost:8092/sensor-types");
       const data = await res.json();
@@ -30,9 +35,12 @@ const SensorTypes = () => {
       console.log("RAW API:", data);
 
       setSensorTypes(Array.isArray(data) ? data : []);
+      setOnlineStatus(true);
     } catch (err) {
       console.error("Failed to fetch sensor types:", err);
       setSensorTypes([]);
+      setError("Failed to connect. The server or database might be down. Please try again later.");
+      setOnlineStatus(false);
     } finally {
       setLoading(false);
     }
@@ -65,6 +73,7 @@ const SensorTypes = () => {
       return;
     }
     setLoading(true);
+    setError(null);
     try {
       const data = await getSensorTypeById(searchId);
       if (data && data.sensorTypeId) {
@@ -72,9 +81,12 @@ const SensorTypes = () => {
       } else {
         setSensorTypes([]);
       }
+      setOnlineStatus(true);
     } catch (err) {
       console.error("Failed to search sensor type:", err);
       setSensorTypes([]);
+      setError("Search failed. The server or database might be down. Please try again.");
+      setOnlineStatus(false);
     } finally {
       setLoading(false);
     }
@@ -133,6 +145,14 @@ const SensorTypes = () => {
         </div>
       </header>
 
+      {error ? (
+        <ConnectionError 
+            message="This site can't be reached" 
+            subMessage={error} 
+            errorCode="ERR_CONNECTION_REFUSED" 
+            onReload={fetchTypes} 
+        />
+      ) : (
       <div className="glass-card crud-table-wrapper">
         {loading ? (
           <div className="loading-state">
@@ -182,6 +202,7 @@ const SensorTypes = () => {
           </table>
         )}
       </div>
+      )}
 
       <Modal
         isOpen={isModalOpen}

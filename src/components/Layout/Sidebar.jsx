@@ -1,9 +1,12 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, AlertTriangle, MapPin, Activity, RadioReceiver, LineChart } from 'lucide-react';
+import { useSystemStatus } from '../../context/SystemStatusContext';
 import './Sidebar.css';
 
 const Sidebar = () => {
+  const { isOnline } = useSystemStatus();
+
   const navItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/alerts', icon: AlertTriangle, label: 'Alerts' },
@@ -37,8 +40,11 @@ const Sidebar = () => {
 
       <div className="sidebar-footer">
         <div className="system-status">
-          <span className="status-indicator active animate-pulse-glow" style={{ backgroundColor: 'var(--severity-success)' }}></span>
-          <span className="status-text">System Online</span>
+          <span 
+            className={`status-indicator ${isOnline ? 'active animate-pulse-glow' : ''}`} 
+            style={{ backgroundColor: isOnline ? 'var(--severity-success)' : 'var(--severity-critical, #ef4444)' }}
+          ></span>
+          <span className="status-text">{isOnline ? 'System Online' : 'System Offline'}</span>
         </div>
       </div>
     </aside>

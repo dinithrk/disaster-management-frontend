@@ -2,11 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { getSites, createSite, updateSite, deleteSite, getSiteById } from '../../services/siteService';
 import { Modal } from '../../components/UI/Modal';
 import { Plus, Edit2, Trash2, MapPin, Eye, Search } from 'lucide-react';
+import ConnectionError from '../../components/UI/ConnectionError';
+import { useSystemStatus } from '../../context/SystemStatusContext';
 import './Crud.css';
 
 const Sites = () => {
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { setOnlineStatus } = useSystemStatus();
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -22,12 +26,16 @@ const Sites = () => {
 
   const fetchSites = async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await getSites();
       setSites(Array.isArray(data) ? data : []);
+      setOnlineStatus(true);
     } catch (e) {
       console.error(e);
       setSites([]);
+      setError("Failed to connect. The server or database might be down. Please try again later.");
+      setOnlineStatus(false);
     } finally {
       setLoading(false);
     }
@@ -60,6 +68,7 @@ const Sites = () => {
       return;
     }
     setLoading(true);
+    setError(null);
     try {
       const data = await getSiteById(searchId);
       // Backend might return an empty object or null if not found, or throw an error (404)
@@ -68,9 +77,12 @@ const Sites = () => {
       } else {
         setSites([]);
       }
+      setOnlineStatus(true);
     } catch (err) {
       console.error("Failed to search site:", err);
       setSites([]);
+      setError("Search failed. The server or database might be down. Please try again.");
+      setOnlineStatus(false);
     } finally {
       setLoading(false);
     }
@@ -135,6 +147,14 @@ const Sites = () => {
         </div>
       </header>
 
+      {error ? (
+        <ConnectionError 
+            message="This site can't be reached" 
+            subMessage={error} 
+            errorCode="ERR_CONNECTION_REFUSED" 
+            onReload={fetchSites} 
+        />
+      ) : (
       <div className="glass-card crud-table-wrapper">
         {loading ? (
           <div className="loading-state">
@@ -188,6 +208,7 @@ const Sites = () => {
           </table>
         )}
       </div>
+      )}
 
       <Modal
         isOpen={isModalOpen}

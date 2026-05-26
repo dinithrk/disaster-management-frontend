@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import Sidebar from './components/Layout/Sidebar';
+import { SystemStatusProvider } from './context/SystemStatusContext';
 
 // Page Placeholders
 import Dashboard from './pages/Dashboard';
@@ -13,8 +14,9 @@ import './App.css';
 
 function App() {
   return (
-    <div className="app-container">
-      <Sidebar />
+    <SystemStatusProvider>
+      <div className="app-container">
+        <Sidebar />
       <main className="main-content">
         <Routes>
           <Route path="/" element={<Dashboard />} />
@@ -25,7 +27,8 @@ function App() {
           <Route path="/telemetry-data" element={<TelemetryData />} />
         </Routes>
       </main>
-    </div>
+      </div>
+    </SystemStatusProvider>
   );
 }
 

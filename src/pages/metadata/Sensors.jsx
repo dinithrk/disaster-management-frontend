@@ -4,6 +4,8 @@ import { getSites } from '../../services/siteService';
 import { getSensorTypes } from '../../services/sensorTypeService';
 import { Modal } from '../../components/UI/Modal';
 import { Plus, Edit2, Trash2, RadioReceiver, Eye, Search } from 'lucide-react';
+import ConnectionError from '../../components/UI/ConnectionError';
+import { useSystemStatus } from '../../context/SystemStatusContext';
 import './Crud.css';
 
 const Sensors = () => {
@@ -11,6 +13,8 @@ const Sensors = () => {
     const [sites, setSites] = useState([]);
     const [types, setTypes] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const { setOnlineStatus } = useSystemStatus();
 
     // Modal states
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -37,6 +41,7 @@ const Sensors = () => {
 
     const fetchData = async () => {
         setLoading(true);
+        setError(null);
 
         try {
             const [sens, sts, typs] = await Promise.all([
@@ -52,10 +57,13 @@ const Sensors = () => {
             setSensors(Array.isArray(sens) ? sens : []);
             setSites(Array.isArray(sts) ? sts : []);
             setTypes(Array.isArray(typs) ? typs : []);
+            setOnlineStatus(true);
 
         } catch (e) {
             console.error(e);
             setSensors([]);
+            setError("Failed to connect. The server or database might be down. Please try again later.");
+            setOnlineStatus(false);
         } finally {
             setLoading(false);
         }
@@ -109,6 +117,7 @@ const Sensors = () => {
             return;
         }
         setLoading(true);
+        setError(null);
         try {
             const allSensors = await getSensors();
             const sensArray = Array.isArray(allSensors) ? allSensors : [];
@@ -117,9 +126,12 @@ const Sensors = () => {
                 return sid ? String(sid).toLowerCase().includes(searchId.toLowerCase()) : false;
             });
             setSensors(filtered);
+            setOnlineStatus(true);
         } catch (err) {
             console.error("Failed to search sensor:", err);
             setSensors([]);
+            setError("Search failed. The server or database might be down. Please try again.");
+            setOnlineStatus(false);
         } finally {
             setLoading(false);
         }
@@ -205,14 +217,22 @@ const Sensors = () => {
                 </div>
             </header>
 
-            <div className="glass-card crud-table-wrapper">
-                {loading ? (
-                    <div className="loading-state">
-                        <div className="spinner"></div>
-                        <p>Loading sensors network...</p>
-                    </div>
-                ) : (
-                    <table className="crud-table">
+            {error ? (
+                <ConnectionError 
+                    message="This site can't be reached" 
+                    subMessage={error} 
+                    errorCode="ERR_CONNECTION_REFUSED" 
+                    onReload={fetchData} 
+                />
+            ) : (
+                <div className="glass-card crud-table-wrapper">
+                    {loading ? (
+                        <div className="loading-state">
+                            <div className="spinner"></div>
+                            <p>Loading sensors network...</p>
+                        </div>
+                    ) : (
+                        <table className="crud-table">
                         <thead>
                             <tr>
                                 <th>Sensor ID</th>
@@ -260,6 +280,7 @@ const Sensors = () => {
                     </table>
                 )}
             </div>
+            )}
 
             <Modal
                 isOpen={isModalOpen}
