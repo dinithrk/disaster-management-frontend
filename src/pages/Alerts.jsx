@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { getActiveAlerts } from '../services/alertsApi';
 import { ShieldAlert, AlertOctagon, AlertTriangle, AlertCircle, RefreshCw } from 'lucide-react';
+import ConnectionError from '../components/UI/ConnectionError';
+import { useSystemStatus } from '../context/SystemStatusContext';
 import './Alerts.css';
 
 const SeverityConfig = {
@@ -13,14 +15,21 @@ const SeverityConfig = {
 const Alerts = () => {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { setOnlineStatus } = useSystemStatus();
 
   const fetchAlerts = async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await getActiveAlerts();
       setAlerts(data);
-    } catch (error) {
-      console.error("Failed to fetch alerts", error);
+      setOnlineStatus(true);
+    } catch (err) {
+      console.error("Failed to fetch alerts", err);
+      setAlerts([]);
+      setError("Failed to connect. The server or database might be down. Please try again later.");
+      setOnlineStatus(false);
     } finally {
       setLoading(false);
     }
@@ -48,6 +57,14 @@ const Alerts = () => {
         </button>
       </header>
 
+      {error ? (
+        <ConnectionError 
+            message="This site can't be reached" 
+            subMessage={error} 
+            errorCode="ERR_CONNECTION_REFUSED" 
+            onReload={fetchAlerts} 
+        />
+      ) : (
       <div className="glass-card table-container">
         {loading ? (
           <div className="loading-state">
@@ -106,6 +123,7 @@ const Alerts = () => {
           </table>
         )}
       </div>
+      )}
     </div>
   );
 };
