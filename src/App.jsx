@@ -9,6 +9,7 @@ import Sites from './pages/metadata/Sites';
 import SensorTypes from './pages/metadata/SensorTypes';
 import Sensors from './pages/metadata/Sensors';
 import TelemetryData from './pages/TelemetryData';
+import GisDashboard from './pages/GisDashboard';
 
 import './App.css';
 
@@ -25,6 +26,8 @@ function App() {
           <Route path="/metadata/sensor-types" element={<SensorTypes />} />
           <Route path="/metadata/sensors" element={<Sensors />} />
           <Route path="/telemetry-data" element={<TelemetryData />} />
+          <Route path="/gis-dashboard" element={<GisDashboard />} />
+          <Route path="/gis" element={<GisDashboard />} />
         </Routes>
       </main>
       </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, AlertTriangle, MapPin, Activity, RadioReceiver, LineChart } from 'lucide-react';
+import { LayoutDashboard, AlertTriangle, MapPin, Activity, RadioReceiver, LineChart, Globe } from 'lucide-react';
 import { useSystemStatus } from '../../context/SystemStatusContext';
 import './Sidebar.css';
 
@@ -9,6 +9,7 @@ const Sidebar = () => {
 
   const navItems = [
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
+    { path: '/gis-dashboard', icon: Globe, label: 'GIS Monitor' },
     { path: '/alerts', icon: AlertTriangle, label: 'Alerts' },
     { path: '/metadata/sites', icon: MapPin, label: 'Sites' },
     { path: '/metadata/sensor-types', icon: Activity, label: 'Sensor Types' },
