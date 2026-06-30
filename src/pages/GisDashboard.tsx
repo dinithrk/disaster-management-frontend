@@ -138,12 +138,12 @@ const GisDashboard: React.FC = () => {
 
   // Helper: Get marker severity class depending on threshold boundaries
   const getSeverityClass = (sensor: Sensor): string => {
-    // Generate a status based on sensor ID to look varied and beautiful initially
-    const mod = sensor.sensor_id % 5;
-    if (mod === 0) return 'severity-critical';
-    if (mod === 1) return 'severity-warning';
-    if (mod === 2) return 'severity-low-warning';
-    if (mod === 3) return 'severity-low-critical';
+    if (!sensor.severity) return 'severity-normal';
+    const sev = sensor.severity.toUpperCase();
+    if (sev === 'HIGH_CRITICAL') return 'severity-critical';
+    if (sev === 'HIGH_WARNING') return 'severity-warning';
+    if (sev === 'LOW_WARNING') return 'severity-low-warning';
+    if (sev === 'LOW_CRITICAL') return 'severity-low-critical';
     return 'severity-normal';
   };
 

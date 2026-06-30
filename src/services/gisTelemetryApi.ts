@@ -15,6 +15,7 @@ export interface Sensor {
   // UI helper fields for name / description
   name?: string;
   sensor_type_name?: string;
+  severity?: string; // Real-time alert status
 }
 
 export interface TelemetryReading {
@@ -24,8 +25,20 @@ export interface TelemetryReading {
   measurement: number;
 }
 
-const api = axios.create({
-  baseURL: '',
+// Axios clients for backend microservices
+const metadataApi = axios.create({
+  baseURL: '/metadata-api',
+  timeout: 5000,
+});
+
+const alertsApi = axios.create({
+  baseURL: '/disaster-management/alerts',
+  timeout: 5000,
+});
+
+// Projected Axios client for the future GIS telemetry microservice
+const gisTelemetryApi = axios.create({
+  baseURL: '/gis-api',
   timeout: 5000,
 });
 
@@ -44,6 +57,7 @@ const MOCK_SENSORS: Sensor[] = [
     site_id: 101,
     name: 'Kelani River Station 01',
     sensor_type_name: 'Water Level Sensor',
+    severity: 'NORMAL'
   },
   {
     sensor_id: 1002,
@@ -58,6 +72,7 @@ const MOCK_SENSORS: Sensor[] = [
     site_id: 102,
     name: 'Mahaweli River Station 02',
     sensor_type_name: 'Water Level Sensor',
+    severity: 'NORMAL'
   },
   {
     sensor_id: 1003,
@@ -72,6 +87,7 @@ const MOCK_SENSORS: Sensor[] = [
     site_id: 103,
     name: 'Kandy Met Weather Station',
     sensor_type_name: 'Temperature Sensor',
+    severity: 'NORMAL'
   },
   {
     sensor_id: 1004,
@@ -86,6 +102,7 @@ const MOCK_SENSORS: Sensor[] = [
     site_id: 104,
     name: 'Galle Coastal Station',
     sensor_type_name: 'Wind Speed Sensor',
+    severity: 'NORMAL'
   },
   {
     sensor_id: 1005,
@@ -100,6 +117,7 @@ const MOCK_SENSORS: Sensor[] = [
     site_id: 105,
     name: 'Trincomalee Bay Station',
     sensor_type_name: 'Water Level Sensor',
+    severity: 'NORMAL'
   },
   {
     sensor_id: 1006,
@@ -114,6 +132,7 @@ const MOCK_SENSORS: Sensor[] = [
     site_id: 106,
     name: 'Matale Rain Gauge',
     sensor_type_name: 'Rainfall Sensor',
+    severity: 'NORMAL'
   }
 ];
 
@@ -182,14 +201,72 @@ const generateMockTelemetry = (sensorId: number, range: string): TelemetryReadin
 
 // API Fetch Methods
 export const getMapSensors = async (): Promise<Sensor[]> => {
-  // Directly return mock data as backend API is not yet implemented
-  return Promise.resolve(MOCK_SENSORS);
+  try {
+    // 1. Fetch sensors metadata
+    const sensorsRes = await metadataApi.get('/sensors');
+    const backendSensors = sensorsRes.data;
+
+    // 2. Fetch active alerts to determine live severity
+    let activeAlerts: any[] = [];
+    try {
+      const alertsRes = await alertsApi.get('/active');
+      activeAlerts = alertsRes.data;
+    } catch (alertError) {
+      console.warn('Failed to fetch active alerts, fallback to normal severity:', alertError);
+    }
+
+    const alertsMap = new Map<string, string>();
+    activeAlerts.forEach((alert: any) => {
+      if (alert.sensorId) {
+        alertsMap.set(String(alert.sensorId), alert.severity);
+      }
+    });
+
+    // 3. Transform backend format to frontend format
+    return backendSensors.map((sensor: any) => {
+      const sIdStr = String(sensor.sensorId);
+      const severity = alertsMap.get(sIdStr) || 'NORMAL';
+      
+      return {
+        sensor_id: Number(sensor.sensorId) || 0,
+        latitude: sensor.latitude,
+        longitude: sensor.longitude,
+        threshold_high_critical: sensor.thresholdHighCritical,
+        threshold_high_warning: sensor.thresholdHighWarning,
+        threshold_low_critical: sensor.thresholdLowCritical,
+        threshold_low_warning: sensor.thresholdLowWarning,
+        unit_of_measure: sensor.unitOfMeasure,
+        sensor_type_id: sensor.sensorType?.sensorTypeId || 0,
+        site_id: sensor.site?.siteId || 0,
+        name: sensor.site?.siteName || `Sensor ${sensor.sensorId}`,
+        sensor_type_name: sensor.sensorType?.type || 'Unknown Sensor',
+        severity: severity,
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching map sensors, falling back to mock data:', error);
+    return Promise.resolve(MOCK_SENSORS);
+  }
 };
 
 export const getSensorTelemetry = async (id: number, range: string): Promise<TelemetryReading[]> => {
-  // Directly return generated mock telemetry data as backend API is not yet implemented
-  const data = generateMockTelemetry(id, range);
-  return Promise.resolve(data);
+  try {
+    const res = await gisTelemetryApi.get(`/telemetry/${id}`, {
+      params: { range }
+    });
+    
+    return res.data.map((reading: any) => ({
+      sensor_id: Number(reading.sensorId) || id,
+      timestamp: reading.timestamp,
+      battery_status: reading.sensorHealth !== null && reading.sensorHealth !== undefined 
+        ? Math.round(reading.sensorHealth) 
+        : 100,
+      measurement: reading.measurement,
+    }));
+  } catch (error) {
+    console.warn(`Failed to fetch telemetry from future microservice for sensor ${id}, falling back to mock data:`, error);
+    return Promise.resolve(generateMockTelemetry(id, range));
+  }
 };
 
 const getTypeName = (typeId: number): string => {
