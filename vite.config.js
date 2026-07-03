@@ -19,6 +19,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/metadata-api/, ''),
       },
+      // Forward /gis-api to the telemetry retrieval service.
+      '/gis-api': {
+        target: 'http://localhost:8094',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/gis-api/, ''),
+      },
     },
   },
 })
