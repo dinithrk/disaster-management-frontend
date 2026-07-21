@@ -1,0 +1,57 @@
+import React, { useState, useEffect } from 'react';
+import { Routes, Route } from 'react-router-dom';
+import Sidebar from './components/Layout/Sidebar';
+import { SystemStatusProvider } from './context/SystemStatusContext';
+
+// Page Placeholders
+import Dashboard from './pages/Dashboard';
+import Alerts from './pages/Alerts';
+import Sites from './pages/metadata/Sites';
+import SensorTypes from './pages/metadata/SensorTypes';
+import Sensors from './pages/metadata/Sensors';
+import TelemetryData from './pages/TelemetryData';
+import GisDashboard from './pages/GisDashboard';
+import Reports from './pages/Reports';
+
+import './App.css';
+
+function App() {
+  const [isLightMode, setIsLightMode] = useState(() => {
+    return localStorage.getItem('theme') === 'light';
+  });
+
+  useEffect(() => {
+    if (isLightMode) {
+      document.body.classList.add('light-mode');
+      localStorage.setItem('theme', 'light');
+    } else {
+      document.body.classList.remove('light-mode');
+      localStorage.setItem('theme', 'dark');
+    }
+  }, [isLightMode]);
+
+  const toggleTheme = () => setIsLightMode(!isLightMode);
+
+  return (
+    <SystemStatusProvider>
+      <div className="app-container">
+        <Sidebar toggleTheme={toggleTheme} isLightMode={isLightMode} />
+      <main className="main-content">
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/alerts" element={<Alerts />} />
+          <Route path="/metadata/sites" element={<Sites />} />
+          <Route path="/metadata/sensor-types" element={<SensorTypes />} />
+          <Route path="/metadata/sensors" element={<Sensors />} />
+          <Route path="/telemetry-data" element={<TelemetryData />} />
+          <Route path="/gis-dashboard" element={<GisDashboard />} />
+          <Route path="/gis" element={<GisDashboard />} />
+          <Route path="/reports" element={<Reports />} />
+        </Routes>
+      </main>
+      </div>
+    </SystemStatusProvider>
+  );
+}
+
+export default App;

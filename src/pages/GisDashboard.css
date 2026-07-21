@@ -1,0 +1,395 @@
+/* GisDashboard.css */
+
+.gis-dashboard {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  background-color: var(--bg-dark);
+  position: relative;
+}
+
+/* Header Styling */
+.gis-header {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(15, 17, 21, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 1000;
+}
+
+.gis-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gis-header-left h1 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin: 0;
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gis-header-center {
+  flex: 1;
+  max-width: 420px;
+  margin: 0 32px;
+}
+
+/* Antd search override to fit dark glassmorphism */
+.gis-search .ant-input-search {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-sm);
+}
+
+.gis-search .ant-input {
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+.gis-search .ant-input:focus,
+.gis-search .ant-input-focused {
+  border-color: var(--accent-blue) !important;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.25) !important;
+}
+
+.gis-search .ant-input-search-button {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--accent-blue) !important;
+}
+
+.gis-search .ant-input-search-button:hover {
+  background-color: var(--accent-blue) !important;
+  color: white !important;
+}
+
+.gis-header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.gis-time-display {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--accent-blue);
+  background: rgba(59, 130, 246, 0.08);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  letter-spacing: 0.5px;
+}
+
+.gis-refresh-btn {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-primary) !important;
+  border-radius: var(--radius-sm) !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gis-refresh-btn:hover {
+  color: var(--accent-blue) !important;
+  border-color: var(--accent-blue) !important;
+  background: rgba(59, 130, 246, 0.08) !important;
+}
+
+/* Map Container */
+.gis-map-container {
+  flex: 1;
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 64px);
+}
+
+.gis-map {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Custom Marker Styling */
+.custom-gps-marker {
+  position: relative;
+  width: 32px;
+  height: 32px;
+}
+
+.marker-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: markerGlow 2s infinite ease-out;
+  opacity: 0;
+}
+
+.marker-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  border: 2px solid white;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+}
+
+/* Marker Severity Colors */
+.severity-critical .marker-pulse {
+  background-color: var(--severity-hi-critical);
+  box-shadow: var(--glow-hi-critical);
+}
+.severity-critical .marker-dot {
+  background-color: var(--severity-hi-critical);
+}
+
+.severity-warning .marker-pulse {
+  background-color: var(--severity-hi-warning);
+  box-shadow: var(--glow-hi-warning);
+}
+.severity-warning .marker-dot {
+  background-color: var(--severity-hi-warning);
+}
+
+.severity-low-warning .marker-pulse {
+  background-color: var(--severity-low-warning);
+  box-shadow: var(--glow-low-warning);
+}
+.severity-low-warning .marker-dot {
+  background-color: var(--severity-low-warning);
+}
+
+.severity-low-critical .marker-pulse {
+  background-color: var(--severity-low-critical);
+  box-shadow: var(--glow-low-critical);
+}
+.severity-low-critical .marker-dot {
+  background-color: var(--severity-low-critical);
+}
+
+.severity-normal .marker-pulse {
+  background-color: var(--severity-success);
+  box-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
+}
+.severity-normal .marker-dot {
+  background-color: var(--severity-success);
+}
+
+@keyframes markerGlow {
+  0% {
+    width: 14px;
+    height: 14px;
+    opacity: 0.9;
+  }
+  100% {
+    width: 38px;
+    height: 38px;
+    opacity: 0;
+  }
+}
+
+/* Antd Drawer styling override for dark/glassmorphic look */
+.gis-drawer .ant-drawer-content {
+  background: rgba(18, 22, 30, 0.92) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-left: 1px solid var(--border-subtle);
+  color: var(--text-primary) !important;
+}
+
+.gis-drawer .ant-drawer-header {
+  border-bottom: 1px solid var(--border-subtle) !important;
+  background: rgba(22, 27, 37, 0.6) !important;
+}
+
+.gis-drawer .ant-drawer-title {
+  color: var(--text-primary) !important;
+}
+
+.gis-drawer .ant-drawer-close {
+  color: var(--text-secondary) !important;
+}
+
+.gis-drawer .ant-drawer-close:hover {
+  color: var(--text-primary) !important;
+}
+
+.gis-drawer .ant-drawer-body {
+  padding: 20px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Drawer sub-components */
+.drawer-section-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  border-left: 3px solid var(--accent-blue);
+  padding-left: 8px;
+}
+
+.segmented-control-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+/* Segmented selector styles overrides */
+.gis-drawer .ant-segmented {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid var(--border-subtle);
+  padding: 2px;
+}
+
+.gis-drawer .ant-segmented-item {
+  color: var(--text-secondary) !important;
+  font-weight: 500;
+}
+
+.gis-drawer .ant-segmented-item-selected {
+  background: var(--accent-blue) !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Descriptions Component Styling */
+.gis-drawer .ant-descriptions {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+
+.gis-drawer .ant-descriptions-item-label {
+  color: var(--text-secondary) !important;
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.gis-drawer .ant-descriptions-item-content {
+  color: var(--text-primary) !important;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+/* Battery status & metadata cards */
+.drawer-stats-row {
+  display: flex;
+  gap: 16px;
+}
+
+.stat-card {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stat-card-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-card-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.stat-card-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.stat-card-icon {
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--accent-blue);
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-card-icon.battery-ok {
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--severity-success);
+}
+
+.stat-card-icon.battery-low {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--severity-hi-critical);
+}
+
+/* Loader styling */
+.chart-loader-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 260px;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-md);
+  gap: 16px;
+}
+
+.chart-loader-text {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+/* Map center control button overlay */
+.map-reset-zoom {
+  position: absolute;
+  top: 80px;
+  left: 10px;
+  z-index: 1000;
+  width: 34px;
+  height: 34px;
+  background: #181b22;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-primary);
+  box-shadow: 0 1px 5px rgba(0,0,0,0.6);
+}
+
+.map-reset-zoom:hover {
+  background: #252a35;
+  color: var(--accent-blue);
+}
