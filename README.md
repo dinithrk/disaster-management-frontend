@@ -1,3 +1,12 @@
+--------------------------------------------------------------------------------
+
+## Please consider this as a failsafe attempt if some history emergence happened during force push
+
+-------------------------------------------------------------------------------
+
+
+
+
 # 🌊 Integrated Hydro Risk Management System - Frontend
 
 ![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)
