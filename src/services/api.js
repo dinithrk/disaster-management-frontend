@@ -1,10 +1,11 @@
 import axios from 'axios';
 
-const metadataApi = axios.create({
-    baseURL: '/metadata-api',
+const api = axios.create({
+  baseURL: 'http://localhost:8096/api',
+  withCredentials: true, // Crucial for sending/receiving HttpOnly cookies
 });
 
-metadataApi.interceptors.request.use(
+api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken');
     if (token) {
@@ -15,12 +16,17 @@ metadataApi.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-metadataApi.interceptors.response.use(
+api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
     // If the error is 401 and we haven't already retried
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // Don't retry if the failed request was the refresh token request or login request
+      if (originalRequest.url === '/auth/refresh-token' || originalRequest.url === '/auth/login') {
+        return Promise.reject(error);
+      }
+
       originalRequest._retry = true;
       try {
         // Attempt to refresh token using the HttpOnly cookie
@@ -33,7 +39,7 @@ metadataApi.interceptors.response.use(
         
         // Retry the original request
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        return metadataApi(originalRequest);
+        return api(originalRequest);
       } catch (refreshError) {
         // If refresh fails, clear everything and force re-login
         localStorage.removeItem('accessToken');
@@ -45,4 +51,4 @@ metadataApi.interceptors.response.use(
   }
 );
 
-export default metadataApi;
+export default api;

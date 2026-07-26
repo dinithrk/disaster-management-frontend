@@ -8,7 +8,7 @@ export default defineConfig({
     port: 8090,
     proxy: {
       // Forward all /disaster-management requests to the Spring Boot service.
-      // The backend runs on port 8080
+      // The auth backend runs on port 8096
       '/disaster-management': {
         target: 'http://localhost:8093',
         changeOrigin: true,

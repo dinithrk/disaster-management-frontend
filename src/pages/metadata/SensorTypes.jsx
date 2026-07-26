@@ -99,24 +99,34 @@ const SensorTypes = () => {
       setIsViewModalOpen(true);
     } catch (err) {
       console.error("Failed to view sensor type:", err);
+      alert("Error viewing sensor type: " + (err.response?.data?.message || err.message || "Unknown error"));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (currentType) {
-      await updateSensorType(currentType.sensorTypeId, formData);
-    } else {
-      await createSensorType(formData);
+    try {
+      if (currentType) {
+        await updateSensorType(currentType.sensorTypeId, formData);
+      } else {
+        await createSensorType(formData);
+      }
+      handleCloseModal();
+      fetchTypes();
+    } catch (err) {
+      console.error("Submission failed:", err);
+      alert("Error saving sensor type: " + (err.response?.data?.message || err.message || "Unknown error"));
     }
-    handleCloseModal();
-    fetchTypes();
   };
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this sensor type?')) {
-      await deleteSensorType(id);
-      fetchTypes();
+      try {
+        await deleteSensorType(id);
+        fetchTypes();
+      } catch (err) {
+        alert("Error deleting sensor type: " + (err.response?.data?.message || err.message || "Unknown error"));
+      }
     }
   };
 

@@ -1,13 +1,16 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, AlertTriangle, MapPin, Activity, RadioReceiver, LineChart, Globe, FileSpreadsheet, Sun, Moon, Settings } from 'lucide-react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, AlertTriangle, MapPin, Activity, RadioReceiver, LineChart, Globe, FileSpreadsheet, Sun, Moon, Settings, User, LogOut, Users } from 'lucide-react';
 import { useSystemStatus } from '../../context/SystemStatusContext';
+import { AuthContext } from '../../context/AuthContext';
 import './Sidebar.css';
 
 const Sidebar = ({ toggleTheme, isLightMode }) => {
   const { isOnline } = useSystemStatus();
+  const { user, logout } = useContext(AuthContext);
   const [showSettings, setShowSettings] = useState(false);
   const settingsRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -29,6 +32,37 @@ const Sidebar = ({ toggleTheme, isLightMode }) => {
     { path: '/telemetry-data', icon: LineChart, label: 'Telemetry Data' },
     { path: '/reports', icon: FileSpreadsheet, label: 'Reports' },
   ];
+
+  if (user?.role === 'ADMIN') {
+    navItems.push({ path: '/admin/users', icon: Users, label: 'User Management' });
+  }
+
+  const handleProfileClick = () => {
+    setShowSettings(false);
+    navigate('/profile');
+  };
+
+  const handleLogoutClick = () => {
+    setShowSettings(false);
+    logout();
+  };
+
+  const dropdownItemStyle = {
+    display: 'flex', 
+    alignItems: 'center', 
+    gap: '0.75rem', 
+    width: '100%', 
+    background: 'transparent', 
+    border: 'none', 
+    color: 'var(--text-primary)', 
+    cursor: 'pointer',
+    padding: '0.5rem',
+    borderRadius: '6px',
+    fontFamily: 'inherit',
+    fontSize: '0.875rem',
+    transition: 'background 0.2s',
+    textAlign: 'left'
+  };
 
   return (
     <aside className="sidebar glass-panel">
@@ -57,31 +91,44 @@ const Sidebar = ({ toggleTheme, isLightMode }) => {
               minWidth: '160px',
               zIndex: 100,
               border: '1px solid var(--border-subtle)',
-              boxShadow: 'var(--glass-card-shadow)'
+              boxShadow: 'var(--glass-card-shadow)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.25rem'
             }}>
+              <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-subtle)', marginBottom: '0.25rem' }}>
+                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>{user?.username}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{user?.role}</div>
+              </div>
+
+              <button 
+                onClick={handleProfileClick} 
+                style={dropdownItemStyle}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <User size={16} />
+                <span>Profile</span>
+              </button>
+
               <button 
                 onClick={() => { toggleTheme(); setShowSettings(false); }} 
-                className="theme-toggle-dropdown"
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '0.75rem', 
-                  width: '100%', 
-                  background: 'transparent', 
-                  border: 'none', 
-                  color: 'var(--text-primary)', 
-                  cursor: 'pointer',
-                  padding: '0.5rem',
-                  borderRadius: '6px',
-                  fontFamily: 'inherit',
-                  fontSize: '0.875rem',
-                  transition: 'background 0.2s'
-                }}
+                style={dropdownItemStyle}
                 onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)'}
                 onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
                 {isLightMode ? <Moon size={16} /> : <Sun size={16} />}
                 <span>{isLightMode ? 'Dark Mode' : 'Light Mode'}</span>
+              </button>
+
+              <button 
+                onClick={handleLogoutClick} 
+                style={{...dropdownItemStyle, color: 'var(--severity-critical, #ef4444)'}}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <LogOut size={16} />
+                <span>Logout</span>
               </button>
             </div>
           )}
