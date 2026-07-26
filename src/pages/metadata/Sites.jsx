@@ -95,6 +95,7 @@ const Sites = () => {
       setIsViewModalOpen(true);
     } catch (err) {
       console.error("Failed to view site:", err);
+      alert("Error viewing site: " + (err.response?.data?.message || err.message || "Unknown error"));
     }
   };
   const handleSubmit = async (e) => {
@@ -105,20 +106,29 @@ const Sites = () => {
       location: formData.location
     };
 
-    if (currentSite) {
-      await updateSite(currentSite.siteId, payload);
-    } else {
-      await createSite(payload);
-    }
+    try {
+      if (currentSite) {
+        await updateSite(currentSite.siteId, payload);
+      } else {
+        await createSite(payload);
+      }
 
-    handleCloseModal();
-    fetchSites();
+      handleCloseModal();
+      fetchSites();
+    } catch (err) {
+      console.error("Submission failed:", err);
+      alert("Error saving site: " + (err.response?.data?.message || err.message || "Unknown error"));
+    }
   };
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this site?')) {
-      await deleteSite(id);
-      fetchSites();
+      try {
+        await deleteSite(id);
+        fetchSites();
+      } catch (err) {
+        alert("Error deleting site: " + (err.response?.data?.message || err.message || "Unknown error"));
+      }
     }
   };
 

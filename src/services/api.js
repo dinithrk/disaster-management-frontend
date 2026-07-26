@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8080/api',
+  baseURL: 'http://localhost:8096/api',
   withCredentials: true, // Crucial for sending/receiving HttpOnly cookies
 });
 
@@ -31,7 +31,7 @@ api.interceptors.response.use(
       try {
         // Attempt to refresh token using the HttpOnly cookie
         // Use standard axios to avoid interceptor loop
-        const res = await axios.post('http://localhost:8080/api/auth/refresh-token', {}, { withCredentials: true });
+        const res = await axios.post('http://localhost:8096/api/auth/refresh-token', {}, { withCredentials: true });
         const newAccessToken = res.data.token;
         
         // Update the access token in localStorage

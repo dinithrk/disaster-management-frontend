@@ -144,6 +144,7 @@ const Sensors = () => {
             setIsViewModalOpen(true);
         } catch (err) {
             console.error("Failed to view sensor:", err);
+            alert("Error viewing sensor: " + (err.response?.data?.message || err.message || "Unknown error"));
         }
     };
 
@@ -180,8 +181,12 @@ const Sensors = () => {
 
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this sensor?')) {
-            await deleteSensor(id);
-            fetchData();
+            try {
+                await deleteSensor(id);
+                fetchData();
+            } catch (err) {
+                alert("Error deleting sensor: " + (err.response?.data?.message || err.message || "Unknown error"));
+            }
         }
     };
 
