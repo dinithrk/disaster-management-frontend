@@ -295,6 +295,7 @@ const GisDashboard: React.FC = () => {
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            crossOrigin=""
           />
           
           {/* Map Controller for flyTo animations */}
