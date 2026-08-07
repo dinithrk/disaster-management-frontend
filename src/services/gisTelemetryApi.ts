@@ -299,10 +299,10 @@ export const getSensorTelemetry = async (id: string, range: string): Promise<Tel
       }));
     }
   } catch (err) {
-    console.warn(`Live telemetry API error for sensor ${id}:`, err);
+    console.error(`Live telemetry API error for sensor ${id}:`, err);
+    throw err;
   }
-
-  return generateMockTelemetry(id, range);
+  return [];
 };
 
 export const getLatestSensorReading = async (id: string): Promise<TelemetryReading | null> => {

@@ -13,6 +13,10 @@ export default defineConfig({
         target: 'http://localhost:8097',
         changeOrigin: true,
       },
+      '/telemetry': {
+        target: 'http://localhost:8097/disaster-management',
+        changeOrigin: true,
+      },
       // Forward /metadata-api to the metadata service.
       '/metadata-api': {
         target: 'http://localhost:8092',
