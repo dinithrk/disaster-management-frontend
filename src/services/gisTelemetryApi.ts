@@ -34,10 +34,22 @@ export interface Alert {
 export interface TelemetryReading {
   sensor_id: string;
   timestamp: string;
-  battery_status: number;
+  battery_status: number | null;
   measurement: number;
   sensor_health?: number;
 }
+
+const telemetryApi = axios.create({
+  baseURL: '/disaster-management/telemetry',
+});
+
+telemetryApi.interceptors.request.use((config) => {
+  const token = localStorage.getItem('accessToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 // Fallback Mock Data for local testing if server is unavailable
 const MOCK_SENSORS: Sensor[] = [
@@ -143,31 +155,30 @@ const getTypeName = (typeId: number): string => {
   }
 };
 
-// Generate realistic telemetry when backend telemetry endpoint has not collected history yet
 const generateMockTelemetry = (sensorId: string, range: string): TelemetryReading[] => {
   const sensor = MOCK_SENSORS.find(s => s.sensor_id === sensorId) || MOCK_SENSORS[0];
   const now = new Date();
   const readings: TelemetryReading[] = [];
   
   let pointsCount = 12;
-  let intervalMinutes = 120; // default for 24h: 2 hours
+  let intervalMinutes = 120;
 
   switch (range.toLowerCase()) {
     case '1h':
       pointsCount = 12;
-      intervalMinutes = 5; // 5 mins
+      intervalMinutes = 5;
       break;
     case '24h':
       pointsCount = 12;
-      intervalMinutes = 120; // 2 hours
+      intervalMinutes = 120;
       break;
     case '7d':
       pointsCount = 14;
-      intervalMinutes = 720; // 12 hours
+      intervalMinutes = 720;
       break;
     case '30d':
       pointsCount = 30;
-      intervalMinutes = 1440; // 24 hours
+      intervalMinutes = 1440;
       break;
   }
 
@@ -210,7 +221,6 @@ export const getMapSensors = async (): Promise<Sensor[]> => {
       return MOCK_SENSORS;
     }
 
-    // Try fetching site metadata to attach site names
     const sitesMap = new Map<number, string>();
     try {
       const sitesRes = await metadataApi.get('/sites');
@@ -276,19 +286,42 @@ export const getActiveAlerts = async (): Promise<Alert[]> => {
 
 export const getSensorTelemetry = async (id: string, range: string): Promise<TelemetryReading[]> => {
   try {
-    const res = await axios.get(`/disaster-management/telemetry/sensor/${id}?range=${range}`);
-    if (Array.isArray(res.data) && res.data.length > 0) {
+    const res = await telemetryApi.get(`/sensor/${encodeURIComponent(id)}?range=${range}`);
+    if (Array.isArray(res.data)) {
       return res.data.map((r: any) => ({
         sensor_id: String(r.sensor_id || r.sensorId || id),
         timestamp: r.timestamp,
-        battery_status: Number(r.battery_status ?? r.batteryStatus ?? 100),
-        measurement: Number(r.measurement || 0),
+        battery_status: r.batteryStatus !== undefined && r.batteryStatus !== null 
+          ? Number(r.batteryStatus) 
+          : (r.battery_status !== undefined && r.battery_status !== null ? Number(r.battery_status) : null),
+        measurement: Number(r.measurement ?? 0),
         sensor_health: r.sensor_health ?? r.sensorHealth,
       }));
     }
   } catch (err) {
-    console.warn(`Live telemetry API warning for ${id}, generating dynamic telemetry:`, err);
+    console.warn(`Live telemetry API error for sensor ${id}:`, err);
   }
 
   return generateMockTelemetry(id, range);
+};
+
+export const getLatestSensorReading = async (id: string): Promise<TelemetryReading | null> => {
+  try {
+    const res = await telemetryApi.get(`/sensor/${encodeURIComponent(id)}/latest`);
+    if (res.data) {
+      const r = res.data;
+      return {
+        sensor_id: String(r.sensor_id || r.sensorId || id),
+        timestamp: r.timestamp,
+        battery_status: r.batteryStatus !== undefined && r.batteryStatus !== null 
+          ? Number(r.batteryStatus) 
+          : (r.battery_status !== undefined && r.battery_status !== null ? Number(r.battery_status) : null),
+        measurement: Number(r.measurement ?? 0),
+        sensor_health: r.sensor_health ?? r.sensorHealth,
+      };
+    }
+  } catch (err) {
+    console.warn(`Latest telemetry API error for sensor ${id}:`, err);
+  }
+  return null;
 };

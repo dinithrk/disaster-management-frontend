@@ -238,7 +238,7 @@ const TelemetryChart: React.FC<TelemetryChartProps> = ({ data, unit, thresholds 
       ],
     };
 
-    chartInstance.current.setOption(option);
+    chartInstance.current.setOption(option, true);
   }, [data, unit, thresholds]);
 
   return (

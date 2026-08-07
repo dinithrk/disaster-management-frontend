@@ -211,10 +211,16 @@ const GisDashboard: React.FC = () => {
     }
   };
 
-  // Extract last recorded battery status from the latest telemetry reading
-  const latestBattery = telemetry.length > 0 
-    ? telemetry[telemetry.length - 1].battery_status 
-    : null;
+  // Extract last recorded battery status from the latest telemetry reading with non-null battery_status
+  const latestBattery = (() => {
+    if (!telemetry || telemetry.length === 0) return null;
+    for (let i = telemetry.length - 1; i >= 0; i--) {
+      if (telemetry[i].battery_status !== null && telemetry[i].battery_status !== undefined) {
+        return telemetry[i].battery_status;
+      }
+    }
+    return null;
+  })();
 
   return (
     <div className="gis-dashboard">
