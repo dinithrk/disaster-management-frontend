@@ -10,7 +10,7 @@ export default defineConfig({
       // Forward all /disaster-management requests to the Spring Boot service.
       // The auth backend runs on port 8096
       '/disaster-management': {
-        target: 'http://localhost:8093',
+        target: 'http://localhost:8097',
         changeOrigin: true,
       },
       // Forward /metadata-api to the metadata service.

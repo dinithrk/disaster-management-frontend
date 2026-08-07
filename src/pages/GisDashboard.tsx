@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
+  AutoComplete, 
   Input, 
   Button, 
   Drawer, 
@@ -7,15 +8,17 @@ import {
   Segmented, 
   Spin, 
   message,
-  Card 
+  Badge,
+  Tag
 } from 'antd';
 import { 
   SearchOutlined, 
   ReloadOutlined, 
   ThunderboltOutlined,
-  HeartOutlined,
   DashboardOutlined,
-  AimOutlined
+  AimOutlined,
+  AlertOutlined,
+  CheckCircleOutlined
 } from '@ant-design/icons';
 import { Battery } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
@@ -24,8 +27,10 @@ import 'leaflet/dist/leaflet.css';
 
 import { 
   getMapSensors, 
+  getActiveAlerts,
   getSensorTelemetry, 
   Sensor, 
+  Alert,
   TelemetryReading 
 } from '../services/gisTelemetryApi';
 import TelemetryChart from '../components/UI/TelemetryChart';
@@ -51,6 +56,7 @@ const MapController: React.FC<MapControllerProps> = ({ center, zoom }) => {
 const GisDashboard: React.FC = () => {
   // States
   const [sensors, setSensors] = useState<Sensor[]>([]);
+  const [activeAlerts, setActiveAlerts] = useState<Alert[]>([]);
   const [selectedSensor, setSelectedSensor] = useState<Sensor | null>(null);
   const [telemetry, setTelemetry] = useState<TelemetryReading[]>([]);
   const [loadingSensors, setLoadingSensors] = useState<boolean>(false);
@@ -59,7 +65,7 @@ const GisDashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [currentTime, setCurrentTime] = useState<string>('');
   
-  // Map center/zoom state (defaults to Sri Lanka center: [7.8731, 80.7718])
+  // Map center/zoom state (defaults to Sri Lanka center: [7.2, 80.6])
   const [mapCenter, setMapCenter] = useState<[number, number]>([7.2, 80.6]);
   const [mapZoom, setMapZoom] = useState<number>(8);
 
@@ -74,24 +80,28 @@ const GisDashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch sensors on mount
-  const fetchSensors = async () => {
+  // Fetch sensors and active alerts from real backend APIs on mount
+  const fetchDashboardData = async () => {
     setLoadingSensors(true);
     try {
-      const data = await getMapSensors();
-      setSensors(data);
+      const [sensorData, alertData] = await Promise.all([
+        getMapSensors(),
+        getActiveAlerts(),
+      ]);
+      setSensors(sensorData);
+      setActiveAlerts(alertData);
     } catch (err) {
-      message.error('Failed to load sensors.');
+      message.error('Failed to load map sensors or backend alert data.');
     } finally {
       setLoadingSensors(false);
     }
   };
 
   useEffect(() => {
-    fetchSensors();
+    fetchDashboardData();
   }, []);
 
-  // Fetch telemetry when sensor or time range changes
+  // Fetch telemetry when selected sensor or time range changes
   useEffect(() => {
     if (!selectedSensor) return;
 
@@ -110,46 +120,50 @@ const GisDashboard: React.FC = () => {
     fetchTelemetry();
   }, [selectedSensor, timeRange]);
 
-  // Handler: Select a sensor (from map click or search selection)
+  // Handler: Select a sensor (from map marker click or search selection)
   const handleSelectSensor = (sensor: Sensor) => {
     setSelectedSensor(sensor);
     setMapCenter([sensor.latitude, sensor.longitude]);
-    setMapZoom(11); // zoom in when selected
+    setMapZoom(12); // Fly and zoom in when selected
   };
 
-  // Handler: Search sensor by ID
-  const handleSearch = (value: string) => {
-    const query = value.trim();
-    if (!query) return;
-
-    // Find sensor matching ID (exact or partial)
-    const found = sensors.find(
-      (s) => s.sensor_id.toString() === query || 
-             (s.name && s.name.toLowerCase().includes(query.toLowerCase()))
+  // Helper: Get active alert severity and CSS class for a specific sensor
+  const getSensorAlertInfo = (sensorId: string) => {
+    const activeAlertsForSensor = activeAlerts.filter(
+      (a) => String(a.sensor_id) === String(sensorId) && (a.status === 'ACTIVE' || !a.status)
     );
 
-    if (found) {
-      handleSelectSensor(found);
-      message.success(`Found: ${found.name || `Sensor ${found.sensor_id}`}`);
-    } else {
-      message.warning(`No sensor found matching "${query}"`);
+    if (activeAlertsForSensor.length === 0) {
+      return { status: 'NORMAL', severityClass: 'severity-normal', color: 'var(--severity-success)' };
     }
+
+    // Evaluate severity hierarchy if multiple alerts exist
+    const hasHighCritical = activeAlertsForSensor.some((a) => a.severity === 'HIGH_CRITICAL');
+    if (hasHighCritical) {
+      return { status: 'HIGH_CRITICAL', severityClass: 'severity-critical', color: 'var(--severity-hi-critical)' };
+    }
+
+    const hasHighWarning = activeAlertsForSensor.some((a) => a.severity === 'HIGH_WARNING');
+    if (hasHighWarning) {
+      return { status: 'HIGH_WARNING', severityClass: 'severity-warning', color: 'var(--severity-hi-warning)' };
+    }
+
+    const hasLowCritical = activeAlertsForSensor.some((a) => a.severity === 'LOW_CRITICAL');
+    if (hasLowCritical) {
+      return { status: 'LOW_CRITICAL', severityClass: 'severity-low-critical', color: 'var(--severity-low-critical)' };
+    }
+
+    const hasLowWarning = activeAlertsForSensor.some((a) => a.severity === 'LOW_WARNING');
+    if (hasLowWarning) {
+      return { status: 'LOW_WARNING', severityClass: 'severity-low-warning', color: 'var(--severity-low-warning)' };
+    }
+
+    return { status: 'NORMAL', severityClass: 'severity-normal', color: 'var(--severity-success)' };
   };
 
-  // Helper: Get marker severity class depending on threshold boundaries
-  const getSeverityClass = (sensor: Sensor): string => {
-    // Generate a status based on sensor ID to look varied and beautiful initially
-    const mod = sensor.sensor_id % 5;
-    if (mod === 0) return 'severity-critical';
-    if (mod === 1) return 'severity-warning';
-    if (mod === 2) return 'severity-low-warning';
-    if (mod === 3) return 'severity-low-critical';
-    return 'severity-normal';
-  };
-
-  // Create custom marker icons dynamically
+  // Create Leaflet marker icon with dynamic glow & marker color matching alert severity
   const createCustomIcon = (sensor: Sensor) => {
-    const severityClass = getSeverityClass(sensor);
+    const { severityClass } = getSensorAlertInfo(sensor.sensor_id);
     return L.divIcon({
       className: 'custom-div-icon',
       html: `
@@ -163,7 +177,41 @@ const GisDashboard: React.FC = () => {
     });
   };
 
-  // Extract last recorded battery status from telemetry
+  // Search auto-complete options
+  const searchOptions = sensors.map((s) => ({
+    value: s.sensor_id,
+    label: (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span><strong>{s.sensor_id}</strong> - {s.name || `Site ${s.site_id}`}</span>
+        <Tag color={getSensorAlertInfo(s.sensor_id).status === 'NORMAL' ? 'green' : 'red'} style={{ fontSize: '10px' }}>
+          {getSensorAlertInfo(s.sensor_id).status}
+        </Tag>
+      </div>
+    ),
+  }));
+
+  // Handler: Search selection / query submit
+  const handleSearchSubmit = (value: string) => {
+    const query = value.trim().toLowerCase();
+    if (!query) return;
+
+    const found = sensors.find(
+      (s) =>
+        s.sensor_id.toLowerCase() === query ||
+        (s.name && s.name.toLowerCase().includes(query)) ||
+        (s.site_name && s.site_name.toLowerCase().includes(query)) ||
+        s.site_id.toString() === query
+    );
+
+    if (found) {
+      handleSelectSensor(found);
+      message.success(`Found sensor: ${found.sensor_id} (${found.name || 'Station'})`);
+    } else {
+      message.warning(`No sensor found matching "${value}"`);
+    }
+  };
+
+  // Extract last recorded battery status from the latest telemetry reading
   const latestBattery = telemetry.length > 0 
     ? telemetry[telemetry.length - 1].battery_status 
     : null;
@@ -174,19 +222,32 @@ const GisDashboard: React.FC = () => {
       <header className="gis-header glass-panel">
         <div className="gis-header-left">
           <DashboardOutlined style={{ fontSize: '20px', color: 'var(--accent-blue)' }} />
-          <h1>ATLAS Telemetry GIS Monitor</h1>
+          <h1>GIS Telemetry Monitoring Station</h1>
         </div>
 
+        {/* Searchbar */}
         <div className="gis-header-center">
           <div className="gis-search">
-            <Input.Search
-              placeholder="Search Sensor ID or Station Name..."
-              allowClear
-              enterButton={<SearchOutlined />}
-              onSearch={handleSearch}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+            <AutoComplete
+              style={{ width: '100%' }}
+              options={searchOptions}
+              onSelect={(val) => {
+                const target = sensors.find((s) => s.sensor_id === val);
+                if (target) handleSelectSensor(target);
+              }}
+              filterOption={(inputValue, option) =>
+                option?.value.toUpperCase().indexOf(inputValue.toUpperCase()) !== -1
+              }
+            >
+              <Input.Search
+                placeholder="Search by Sensor ID, Site Name, or Type..."
+                allowClear
+                enterButton={<SearchOutlined />}
+                onSearch={handleSearchSubmit}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </AutoComplete>
           </div>
         </div>
 
@@ -196,7 +257,7 @@ const GisDashboard: React.FC = () => {
           </div>
           <Button 
             className="gis-refresh-btn" 
-            onClick={fetchSensors} 
+            onClick={fetchDashboardData} 
             loading={loadingSensors}
             icon={<ReloadOutlined />}
           >
@@ -205,7 +266,7 @@ const GisDashboard: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Map Area */}
+      {/* Main Map Container */}
       <div className="gis-map-container">
         {/* Reset Zoom helper overlay */}
         <button 
@@ -214,7 +275,7 @@ const GisDashboard: React.FC = () => {
             setMapCenter([7.2, 80.6]);
             setMapZoom(8);
           }}
-          title="Reset View"
+          title="Reset View to Overview"
         >
           <AimOutlined style={{ fontSize: '18px' }} />
         </button>
@@ -230,10 +291,10 @@ const GisDashboard: React.FC = () => {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           
-          {/* Map Controller for flying animations */}
+          {/* Map Controller for flyTo animations */}
           <MapController center={mapCenter} zoom={mapZoom} />
 
-          {/* Render Sensor Markers */}
+          {/* Render Sensor Markers based on active alert status */}
           {sensors.map((sensor) => (
             <Marker
               key={sensor.sensor_id}
@@ -253,7 +314,7 @@ const GisDashboard: React.FC = () => {
           selectedSensor ? (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontSize: '16px', fontWeight: 'bold' }}>
-                {selectedSensor.name || `Station ID: ${selectedSensor.sensor_id}`}
+                {selectedSensor.name || `Sensor ID: ${selectedSensor.sensor_id}`}
               </span>
               <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 'normal' }}>
                 {selectedSensor.sensor_type_name}
@@ -268,102 +329,115 @@ const GisDashboard: React.FC = () => {
         open={selectedSensor !== null}
         className="gis-drawer"
       >
-        {selectedSensor && (
-          <>
-            {/* Drawer Stats / Battery Status */}
-            <div className="drawer-stats-row">
-              <div className="stat-card">
-                <div className="stat-card-left">
-                  <span className="stat-card-label">Battery Level</span>
-                  <span className="stat-card-value">
-                    {latestBattery !== null ? `${latestBattery}%` : 'N/A'}
-                  </span>
+        {selectedSensor && (() => {
+          const alertInfo = getSensorAlertInfo(selectedSensor.sensor_id);
+          return (
+            <>
+              {/* Drawer Stats: Battery Level & Sensor Status */}
+              <div className="drawer-stats-row">
+                {/* Battery Level Card */}
+                <div className="stat-card">
+                  <div className="stat-card-left">
+                    <span className="stat-card-label">Battery Level</span>
+                    <span className="stat-card-value">
+                      {latestBattery !== null ? `${latestBattery}%` : 'N/A'}
+                    </span>
+                  </div>
+                  <div className={`stat-card-icon ${latestBattery !== null && latestBattery > 25 ? 'battery-ok' : 'battery-low'}`}>
+                    <Battery size={22} />
+                  </div>
                 </div>
-                <div className={`stat-card-icon ${latestBattery !== null && latestBattery > 25 ? 'battery-ok' : 'battery-low'}`}>
-                  <Battery size={22} />
+
+                {/* Active Alert Status Card */}
+                <div className="stat-card">
+                  <div className="stat-card-left">
+                    <span className="stat-card-label">Sensor Status</span>
+                    <span 
+                      className="stat-card-value" 
+                      style={{ 
+                        fontSize: '1.1rem', 
+                        color: alertInfo.color,
+                        fontWeight: 'bold',
+                        letterSpacing: '0.5px'
+                      }}
+                    >
+                      {alertInfo.status}
+                    </span>
+                  </div>
+                  <div className="stat-card-icon" style={{ color: alertInfo.color, background: `${alertInfo.color}15` }}>
+                    {alertInfo.status === 'NORMAL' ? (
+                      <CheckCircleOutlined style={{ fontSize: '22px' }} />
+                    ) : (
+                      <AlertOutlined style={{ fontSize: '22px' }} />
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <div className="stat-card">
-                <div className="stat-card-left">
-                  <span className="stat-card-label">Sensor Status</span>
-                  <span className="stat-card-value" style={{ 
-                    fontSize: '1.15rem', 
-                    color: getSeverityClass(selectedSensor) === 'severity-normal' 
-                      ? 'var(--severity-success)' 
-                      : getSeverityClass(selectedSensor) === 'severity-critical' 
-                        ? 'var(--severity-hi-critical)' 
-                        : 'var(--severity-hi-warning)'
-                  }}>
-                    {getSeverityClass(selectedSensor) === 'severity-normal' 
-                      ? 'NORMAL' 
-                      : getSeverityClass(selectedSensor) === 'severity-critical' 
-                        ? 'CRITICAL' 
-                        : 'WARNING'}
-                  </span>
-                </div>
-                <div className="stat-card-icon">
-                  <ThunderboltOutlined style={{ fontSize: '22px' }} />
-                </div>
-              </div>
-            </div>
-
-            {/* Time Range Selector */}
-            <div>
-              <div className="drawer-section-title">Telemetry Trend</div>
-              <div className="segmented-control-container">
-                <Segmented
-                  options={[
-                    { label: '1H', value: '1h' },
-                    { label: '24H', value: '24h' },
-                    { label: '7D', value: '7d' },
-                    { label: '30D', value: '30d' },
-                  ]}
-                  value={timeRange}
-                  onChange={(value) => setTimeRange(value as string)}
-                />
-              </div>
-
-              {/* Telemetry Chart with Spin Loader */}
-              {loadingTelemetry ? (
-                <div className="chart-loader-container">
-                  <Spin size="large" />
-                  <span className="chart-loader-text">Fetching historical data...</span>
-                </div>
-              ) : (
-                <div style={{ background: 'rgba(0, 0, 0, 0.2)', padding: '12px 0', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-                  <TelemetryChart
-                    data={telemetry}
-                    unit={selectedSensor.unit_of_measure}
-                    thresholds={{
-                      highCritical: selectedSensor.threshold_high_critical,
-                      highWarning: selectedSensor.threshold_high_warning,
-                      lowWarning: selectedSensor.threshold_low_warning,
-                      lowCritical: selectedSensor.threshold_low_critical,
-                    }}
+              {/* Telemetry Chart Section */}
+              <div>
+                <div className="drawer-section-title">Telemetry Readings</div>
+                <div className="segmented-control-container">
+                  <Segmented
+                    options={[
+                      { label: '1H', value: '1h' },
+                      { label: '24H', value: '24h' },
+                      { label: '7D', value: '7d' },
+                      { label: '30D', value: '30d' },
+                    ]}
+                    value={timeRange}
+                    onChange={(value) => setTimeRange(value as string)}
                   />
                 </div>
-              )}
-            </div>
 
-            {/* Detailed Metadata Descriptions */}
-            <div>
-              <div className="drawer-section-title">Sensor Attributes</div>
-              <Descriptions column={1} bordered={false} size="small">
-                <Descriptions.Item label="Sensor ID">{selectedSensor.sensor_id}</Descriptions.Item>
-                <Descriptions.Item label="Site ID">{selectedSensor.site_id}</Descriptions.Item>
-                <Descriptions.Item label="Sensor Type ID">{selectedSensor.sensor_type_id}</Descriptions.Item>
-                <Descriptions.Item label="Latitude">{selectedSensor.latitude}</Descriptions.Item>
-                <Descriptions.Item label="Longitude">{selectedSensor.longitude}</Descriptions.Item>
-                <Descriptions.Item label="Unit of Measure">{selectedSensor.unit_of_measure}</Descriptions.Item>
-                <Descriptions.Item label="High Critical">{selectedSensor.threshold_high_critical} {selectedSensor.unit_of_measure}</Descriptions.Item>
-                <Descriptions.Item label="High Warning">{selectedSensor.threshold_high_warning} {selectedSensor.unit_of_measure}</Descriptions.Item>
-                <Descriptions.Item label="Low Warning">{selectedSensor.threshold_low_warning} {selectedSensor.unit_of_measure}</Descriptions.Item>
-                <Descriptions.Item label="Low Critical">{selectedSensor.threshold_low_critical} {selectedSensor.unit_of_measure}</Descriptions.Item>
-              </Descriptions>
-            </div>
-          </>
-        )}
+                {/* Telemetry Chart with Spin Loader */}
+                {loadingTelemetry ? (
+                  <div className="chart-loader-container">
+                    <Spin size="large" />
+                    <span className="chart-loader-text">Fetching historical telemetry readings...</span>
+                  </div>
+                ) : (
+                  <div style={{ background: 'rgba(0, 0, 0, 0.2)', padding: '12px 0', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                    <TelemetryChart
+                      data={telemetry}
+                      unit={selectedSensor.unit_of_measure}
+                      thresholds={{
+                        highCritical: selectedSensor.threshold_high_critical,
+                        highWarning: selectedSensor.threshold_high_warning,
+                        lowWarning: selectedSensor.threshold_low_warning,
+                        lowCritical: selectedSensor.threshold_low_critical,
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Detailed Sensor Attributes */}
+              <div>
+                <div className="drawer-section-title">Sensor Metadata & Thresholds</div>
+                <Descriptions column={1} bordered={false} size="small">
+                  <Descriptions.Item label="Sensor ID">{selectedSensor.sensor_id}</Descriptions.Item>
+                  <Descriptions.Item label="Site">{selectedSensor.site_name || `Site ${selectedSensor.site_id}`}</Descriptions.Item>
+                  <Descriptions.Item label="Sensor Type">{selectedSensor.sensor_type_name}</Descriptions.Item>
+                  <Descriptions.Item label="Coordinates">{selectedSensor.latitude}, {selectedSensor.longitude}</Descriptions.Item>
+                  <Descriptions.Item label="Unit of Measure">{selectedSensor.unit_of_measure}</Descriptions.Item>
+                  <Descriptions.Item label="High Critical Threshold">
+                    <span style={{ color: 'var(--severity-hi-critical)' }}>{selectedSensor.threshold_high_critical} {selectedSensor.unit_of_measure}</span>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="High Warning Threshold">
+                    <span style={{ color: 'var(--severity-hi-warning)' }}>{selectedSensor.threshold_high_warning} {selectedSensor.unit_of_measure}</span>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Low Warning Threshold">
+                    <span style={{ color: 'var(--severity-low-warning)' }}>{selectedSensor.threshold_low_warning} {selectedSensor.unit_of_measure}</span>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Low Critical Threshold">
+                    <span style={{ color: 'var(--severity-low-critical)' }}>{selectedSensor.threshold_low_critical} {selectedSensor.unit_of_measure}</span>
+                  </Descriptions.Item>
+                </Descriptions>
+              </div>
+            </>
+          );
+        })()}
       </Drawer>
     </div>
   );

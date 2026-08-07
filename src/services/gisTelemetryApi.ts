@@ -1,8 +1,10 @@
 import axios from 'axios';
+import metadataApi from './metadataApi';
+import { getActiveAlerts as fetchActiveAlertsFromApi } from './alertsApi';
 
-// Interfaces mapping to database schemas
+// Interfaces mapping directly to database schemas
 export interface Sensor {
-  sensor_id: number;
+  sensor_id: string;
   latitude: number;
   longitude: number;
   threshold_high_critical: number;
@@ -12,27 +14,35 @@ export interface Sensor {
   unit_of_measure: string;
   sensor_type_id: number;
   site_id: number;
-  // UI helper fields for name / description
+  // UI helper fields for name / description / site
   name?: string;
+  site_name?: string;
   sensor_type_name?: string;
 }
 
+export interface Alert {
+  alert_id: string;
+  sensor_id: string;
+  severity: 'HIGH_CRITICAL' | 'HIGH_WARNING' | 'LOW_WARNING' | 'LOW_CRITICAL';
+  status: 'ACTIVE' | 'RESOLVED';
+  measurement: number;
+  threshold: number;
+  timestamp: string;
+  first_created_at?: string;
+}
+
 export interface TelemetryReading {
-  sensor_id: number;
+  sensor_id: string;
   timestamp: string;
   battery_status: number;
   measurement: number;
+  sensor_health?: number;
 }
 
-const api = axios.create({
-  baseURL: '',
-  timeout: 5000,
-});
-
-// Realistic Mock Data for local testing/fallback
+// Fallback Mock Data for local testing if server is unavailable
 const MOCK_SENSORS: Sensor[] = [
   {
-    sensor_id: 1001,
+    sensor_id: '1001',
     latitude: 6.9497,
     longitude: 80.0150,
     threshold_high_critical: 8.0,
@@ -43,10 +53,11 @@ const MOCK_SENSORS: Sensor[] = [
     sensor_type_id: 1,
     site_id: 101,
     name: 'Kelani River Station 01',
+    site_name: 'Kelani River Sector',
     sensor_type_name: 'Water Level Sensor',
   },
   {
-    sensor_id: 1002,
+    sensor_id: '1002',
     latitude: 7.2896,
     longitude: 80.6324,
     threshold_high_critical: 10.0,
@@ -57,10 +68,11 @@ const MOCK_SENSORS: Sensor[] = [
     sensor_type_id: 1,
     site_id: 102,
     name: 'Mahaweli River Station 02',
+    site_name: 'Mahaweli Hydro Zone',
     sensor_type_name: 'Water Level Sensor',
   },
   {
-    sensor_id: 1003,
+    sensor_id: '1003',
     latitude: 7.2906,
     longitude: 80.6337,
     threshold_high_critical: 38.0,
@@ -71,10 +83,11 @@ const MOCK_SENSORS: Sensor[] = [
     sensor_type_id: 2,
     site_id: 103,
     name: 'Kandy Met Weather Station',
+    site_name: 'Kandy Central Station',
     sensor_type_name: 'Temperature Sensor',
   },
   {
-    sensor_id: 1004,
+    sensor_id: '1004',
     latitude: 6.0367,
     longitude: 80.2170,
     threshold_high_critical: 60.0,
@@ -85,10 +98,11 @@ const MOCK_SENSORS: Sensor[] = [
     sensor_type_id: 3,
     site_id: 104,
     name: 'Galle Coastal Station',
+    site_name: 'Galle Coast Line',
     sensor_type_name: 'Wind Speed Sensor',
   },
   {
-    sensor_id: 1005,
+    sensor_id: '1005',
     latitude: 8.5873,
     longitude: 81.2152,
     threshold_high_critical: 4.0,
@@ -99,10 +113,11 @@ const MOCK_SENSORS: Sensor[] = [
     sensor_type_id: 1,
     site_id: 105,
     name: 'Trincomalee Bay Station',
+    site_name: 'Trincomalee Port Area',
     sensor_type_name: 'Water Level Sensor',
   },
   {
-    sensor_id: 1006,
+    sensor_id: '1006',
     latitude: 7.5023,
     longitude: 80.5501,
     threshold_high_critical: 250.0,
@@ -113,12 +128,23 @@ const MOCK_SENSORS: Sensor[] = [
     sensor_type_id: 4,
     site_id: 106,
     name: 'Matale Rain Gauge',
+    site_name: 'Matale Hills Observatory',
     sensor_type_name: 'Rainfall Sensor',
   }
 ];
 
-// Helper to generate dynamic mock telemetry based on range and sensor thresholds
-const generateMockTelemetry = (sensorId: number, range: string): TelemetryReading[] => {
+const getTypeName = (typeId: number): string => {
+  switch (typeId) {
+    case 1: return 'Water Level Sensor';
+    case 2: return 'Temperature Sensor';
+    case 3: return 'Wind Speed Sensor';
+    case 4: return 'Rainfall Sensor';
+    default: return 'Telemetry Sensor';
+  }
+};
+
+// Generate realistic telemetry when backend telemetry endpoint has not collected history yet
+const generateMockTelemetry = (sensorId: string, range: string): TelemetryReading[] => {
   const sensor = MOCK_SENSORS.find(s => s.sensor_id === sensorId) || MOCK_SENSORS[0];
   const now = new Date();
   const readings: TelemetryReading[] = [];
@@ -145,29 +171,23 @@ const generateMockTelemetry = (sensorId: number, range: string): TelemetryReadin
       break;
   }
 
-  // Determine a reasonable baseline and noise level
   const baseline = (sensor.threshold_high_warning + sensor.threshold_low_warning) / 2;
   const rangeDiff = sensor.threshold_high_warning - sensor.threshold_low_warning;
 
   for (let i = pointsCount - 1; i >= 0; i--) {
     const timestamp = new Date(now.getTime() - i * intervalMinutes * 60 * 1000);
-    
-    // Add sinusoidal wave + random noise
     const angle = (i / pointsCount) * Math.PI * 2;
     const wave = Math.sin(angle) * (rangeDiff * 0.4);
     const noise = (Math.random() - 0.5) * (rangeDiff * 0.15);
     let measurement = baseline + wave + noise;
 
-    // Ensure it stays within positive or logical boundaries
     if (measurement < 0 && sensor.unit_of_measure !== '°C') {
       measurement = 0;
     }
     measurement = Math.round(measurement * 100) / 100;
 
-    // Battery drains slowly backwards in time (meaning it goes up towards the past)
-    const batteryBase = 72; 
-    const batteryNoise = Math.floor(Math.sin(angle) * 3);
-    const battery_status = Math.min(100, Math.max(0, batteryBase + batteryNoise - i));
+    const batteryBase = 85; 
+    const battery_status = Math.min(100, Math.max(10, batteryBase - i));
 
     readings.push({
       sensor_id: sensorId,
@@ -182,22 +202,93 @@ const generateMockTelemetry = (sensorId: number, range: string): TelemetryReadin
 
 // API Fetch Methods
 export const getMapSensors = async (): Promise<Sensor[]> => {
-  // Directly return mock data as backend API is not yet implemented
-  return Promise.resolve(MOCK_SENSORS);
-};
+  try {
+    const res = await metadataApi.get('/sensors');
+    const rawSensors = res.data;
 
-export const getSensorTelemetry = async (id: number, range: string): Promise<TelemetryReading[]> => {
-  // Directly return generated mock telemetry data as backend API is not yet implemented
-  const data = generateMockTelemetry(id, range);
-  return Promise.resolve(data);
-};
+    if (!Array.isArray(rawSensors) || rawSensors.length === 0) {
+      return MOCK_SENSORS;
+    }
 
-const getTypeName = (typeId: number): string => {
-  switch (typeId) {
-    case 1: return 'Water Level Sensor';
-    case 2: return 'Temperature Sensor';
-    case 3: return 'Wind Speed Sensor';
-    case 4: return 'Rainfall Sensor';
-    default: return 'Telemetry Sensor';
+    // Try fetching site metadata to attach site names
+    const sitesMap = new Map<number, string>();
+    try {
+      const sitesRes = await metadataApi.get('/sites');
+      if (Array.isArray(sitesRes.data)) {
+        sitesRes.data.forEach((s: any) => {
+          const sId = s.siteId || s.site_id;
+          const sName = s.siteName || s.site_name;
+          if (sId) sitesMap.set(sId, sName);
+        });
+      }
+    } catch (e) {
+      console.warn('Sites metadata fetch error:', e);
+    }
+
+    return rawSensors.map((s: any) => {
+      const sensor_id = String(s.sensorId || s.sensor_id || '');
+      const site_id = Number(s.siteId || s.site_id || (s.site ? (s.site.siteId || s.site.site_id) : 0));
+      const sensor_type_id = Number(s.sensorTypeId || s.sensor_type_id || (s.sensorType ? (s.sensorType.sensorTypeId || s.sensorType.sensor_type_id) : 0));
+      const site_name = sitesMap.get(site_id) || (s.site ? (s.site.siteName || s.site.site_name) : undefined);
+
+      return {
+        sensor_id,
+        latitude: Number(s.latitude || 0),
+        longitude: Number(s.longitude || 0),
+        threshold_high_critical: Number(s.thresholdHighCritical ?? s.threshold_high_critical ?? 0),
+        threshold_high_warning: Number(s.thresholdHighWarning ?? s.threshold_high_warning ?? 0),
+        threshold_low_critical: Number(s.thresholdLowCritical ?? s.threshold_low_critical ?? 0),
+        threshold_low_warning: Number(s.thresholdLowWarning ?? s.threshold_low_warning ?? 0),
+        unit_of_measure: String(s.unitOfMeasure || s.unit_of_measure || ''),
+        sensor_type_id,
+        site_id,
+        site_name,
+        name: site_name ? `${site_name} (${sensor_id})` : `Sensor ${sensor_id}`,
+        sensor_type_name: s.sensorType?.type || getTypeName(sensor_type_id),
+      };
+    });
+  } catch (err) {
+    console.warn('Falling back to mock sensors due to backend error:', err);
+    return MOCK_SENSORS;
   }
+};
+
+export const getActiveAlerts = async (): Promise<Alert[]> => {
+  try {
+    const alerts = await fetchActiveAlertsFromApi();
+    if (!Array.isArray(alerts)) return [];
+
+    return alerts.map((a: any) => ({
+      alert_id: String(a.alert_id || a.alertId),
+      sensor_id: String(a.sensor_id || a.sensorId),
+      severity: a.severity,
+      status: a.status || 'ACTIVE',
+      measurement: Number(a.measurement || 0),
+      threshold: Number(a.breached_threshold ?? a.threshold ?? 0),
+      timestamp: a.timestamp,
+      first_created_at: a.first_created_at || a.firstCreatedAt,
+    }));
+  } catch (err) {
+    console.warn('Active alerts fetch warning:', err);
+    return [];
+  }
+};
+
+export const getSensorTelemetry = async (id: string, range: string): Promise<TelemetryReading[]> => {
+  try {
+    const res = await axios.get(`/disaster-management/telemetry/sensor/${id}?range=${range}`);
+    if (Array.isArray(res.data) && res.data.length > 0) {
+      return res.data.map((r: any) => ({
+        sensor_id: String(r.sensor_id || r.sensorId || id),
+        timestamp: r.timestamp,
+        battery_status: Number(r.battery_status ?? r.batteryStatus ?? 100),
+        measurement: Number(r.measurement || 0),
+        sensor_health: r.sensor_health ?? r.sensorHealth,
+      }));
+    }
+  } catch (err) {
+    console.warn(`Live telemetry API warning for ${id}, generating dynamic telemetry:`, err);
+  }
+
+  return generateMockTelemetry(id, range);
 };
