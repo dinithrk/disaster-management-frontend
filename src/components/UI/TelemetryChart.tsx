@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, memo } from 'react';
 import * as echarts from 'echarts';
 import { TelemetryReading } from '../../services/gisTelemetryApi';
 
@@ -37,6 +37,11 @@ const TelemetryChart: React.FC<TelemetryChartProps> = ({ data, unit, thresholds 
     };
   }, []);
 
+  const highCritical = thresholds?.highCritical;
+  const highWarning = thresholds?.highWarning;
+  const lowWarning = thresholds?.lowWarning;
+  const lowCritical = thresholds?.lowCritical;
+
   useEffect(() => {
     if (!chartInstance.current || !data) return;
 
@@ -52,9 +57,9 @@ const TelemetryChart: React.FC<TelemetryChartProps> = ({ data, unit, thresholds 
     // Create markLines for thresholds
     const markLineData: any[] = [];
     
-    if (thresholds.highCritical !== undefined) {
+    if (highCritical !== undefined) {
       markLineData.push({
-        yAxis: thresholds.highCritical,
+        yAxis: highCritical,
         name: 'High Critical',
         lineStyle: { color: '#ef4444', type: 'dashed', width: 1.5 },
         label: {
@@ -69,9 +74,9 @@ const TelemetryChart: React.FC<TelemetryChartProps> = ({ data, unit, thresholds 
       });
     }
 
-    if (thresholds.highWarning !== undefined) {
+    if (highWarning !== undefined) {
       markLineData.push({
-        yAxis: thresholds.highWarning,
+        yAxis: highWarning,
         name: 'High Warning',
         lineStyle: { color: '#f97316', type: 'dashed', width: 1.2 },
         label: {
@@ -86,9 +91,9 @@ const TelemetryChart: React.FC<TelemetryChartProps> = ({ data, unit, thresholds 
       });
     }
 
-    if (thresholds.lowWarning !== undefined) {
+    if (lowWarning !== undefined) {
       markLineData.push({
-        yAxis: thresholds.lowWarning,
+        yAxis: lowWarning,
         name: 'Low Warning',
         lineStyle: { color: '#eab308', type: 'dashed', width: 1.2 },
         label: {
@@ -103,9 +108,9 @@ const TelemetryChart: React.FC<TelemetryChartProps> = ({ data, unit, thresholds 
       });
     }
 
-    if (thresholds.lowCritical !== undefined) {
+    if (lowCritical !== undefined) {
       markLineData.push({
-        yAxis: thresholds.lowCritical,
+        yAxis: lowCritical,
         name: 'Low Critical',
         lineStyle: { color: '#3b82f6', type: 'dashed', width: 1.5 },
         label: {
@@ -232,14 +237,15 @@ const TelemetryChart: React.FC<TelemetryChartProps> = ({ data, unit, thresholds 
           },
           markLine: {
             silent: true,
+            animation: false,
             data: markLineData,
           },
         },
       ],
     };
 
-    chartInstance.current.setOption(option, true);
-  }, [data, unit, thresholds]);
+    chartInstance.current.setOption(option, false);
+  }, [data, unit, highCritical, highWarning, lowWarning, lowCritical]);
 
   return (
     <div 
@@ -253,4 +259,4 @@ const TelemetryChart: React.FC<TelemetryChartProps> = ({ data, unit, thresholds 
   );
 };
 
-export default TelemetryChart;
+export default memo(TelemetryChart);

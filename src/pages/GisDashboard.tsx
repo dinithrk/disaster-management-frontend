@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   AutoComplete, 
   Input, 
@@ -68,6 +68,24 @@ const GisDashboard: React.FC = () => {
   // Map center/zoom state (defaults to Sri Lanka center: [7.2, 80.6])
   const [mapCenter, setMapCenter] = useState<[number, number]>([7.2, 80.6]);
   const [mapZoom, setMapZoom] = useState<number>(8);
+
+  // Memoize chart threshold object to avoid passing new object reference every clock tick
+  const chartThresholds = useMemo(() => {
+    if (!selectedSensor) {
+      return { highCritical: 0, highWarning: 0, lowWarning: 0, lowCritical: 0 };
+    }
+    return {
+      highCritical: selectedSensor.threshold_high_critical,
+      highWarning: selectedSensor.threshold_high_warning,
+      lowWarning: selectedSensor.threshold_low_warning,
+      lowCritical: selectedSensor.threshold_low_critical,
+    };
+  }, [
+    selectedSensor?.threshold_high_critical,
+    selectedSensor?.threshold_high_warning,
+    selectedSensor?.threshold_low_warning,
+    selectedSensor?.threshold_low_critical,
+  ]);
 
   // Update clock every second
   useEffect(() => {
@@ -408,12 +426,7 @@ const GisDashboard: React.FC = () => {
                     <TelemetryChart
                       data={telemetry}
                       unit={selectedSensor.unit_of_measure}
-                      thresholds={{
-                        highCritical: selectedSensor.threshold_high_critical,
-                        highWarning: selectedSensor.threshold_high_warning,
-                        lowWarning: selectedSensor.threshold_low_warning,
-                        lowCritical: selectedSensor.threshold_low_critical,
-                      }}
+                      thresholds={chartThresholds}
                     />
                   </div>
                 )}
