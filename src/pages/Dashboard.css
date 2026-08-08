@@ -2,7 +2,7 @@
 
 .dashboard-container {
   padding: 1.5rem 2rem;
-  max-width: 1650px;
+  max-width: 1700px;
   margin: 0 auto;
 }
 
@@ -42,21 +42,21 @@
   flex-wrap: wrap;
 }
 
-/* Analytics Row (Gauges, Battery Bar Chart, Live Timeline) */
+/* Analytics Row Grid - 4 Scientific Cards */
 .analytics-grid {
   display: grid;
-  grid-template-columns: 280px 1fr 340px;
-  gap: 1.25rem;
+  grid-template-columns: 240px 1fr 1fr 240px;
+  gap: 1.15rem;
   margin-bottom: 1.75rem;
 }
 
-@media (max-width: 1300px) {
+@media (max-width: 1400px) {
   .analytics-grid {
     grid-template-columns: 1fr 1fr;
   }
 }
 
-@media (max-width: 850px) {
+@media (max-width: 800px) {
   .analytics-grid {
     grid-template-columns: 1fr;
   }
@@ -66,27 +66,28 @@
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 1.15rem;
+  padding: 1.1rem 1.15rem;
   display: flex;
   flex-direction: column;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   position: relative;
   overflow: hidden;
-  transition: border-color var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .analytics-card:hover {
   border-color: var(--border-focus);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .analytics-card-title {
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 600;
   color: var(--text-primary);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.65rem;
 }
 
 .analytics-card-title span {
@@ -95,103 +96,7 @@
   gap: 0.45rem;
 }
 
-/* Timeline Panel */
-.timeline-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  max-height: 220px;
-  overflow-y: auto;
-  padding-right: 0.35rem;
-}
-
-.timeline-list::-webkit-scrollbar {
-  width: 4px;
-}
-
-.timeline-list::-webkit-scrollbar-thumb {
-  background: var(--border-subtle);
-  border-radius: 2px;
-}
-
-.timeline-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.5rem 0.65rem;
-  border-radius: var(--radius-sm);
-  background: var(--bg-surface-hover);
-  border: 1px solid var(--border-subtle);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.timeline-item:hover {
-  border-color: var(--accent-blue);
-  transform: translateX(2px);
-}
-
-.timeline-marker {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  margin-top: 5px;
-  flex-shrink: 0;
-}
-
-.timeline-marker.active {
-  background-color: #22c55e;
-  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
-}
-
-.timeline-marker.warning {
-  background-color: #f59e0b;
-  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
-}
-
-.timeline-marker.inactive {
-  background-color: #ef4444;
-  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
-  animation: pulse-dot 1.5s infinite;
-}
-
-@keyframes pulse-dot {
-  0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-  70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
-  100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-}
-
-.timeline-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.timeline-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.timeline-sensor-id {
-  font-weight: 600;
-  font-size: 0.84rem;
-  font-family: monospace;
-  color: var(--text-primary);
-}
-
-.timeline-time {
-  font-size: 0.76rem;
-  color: var(--text-secondary);
-}
-
-.timeline-detail {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  margin-top: 0.15rem;
-}
-
-/* Control Bar: Filters & Search */
+/* Controls Bar */
 .dashboard-controls {
   display: flex;
   justify-content: space-between;
@@ -199,17 +104,21 @@
   flex-wrap: wrap;
   gap: 1rem;
   margin-bottom: 1.25rem;
+  padding: 0.85rem 1.1rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
 }
 
 .filter-group {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
   flex-wrap: wrap;
 }
 
 .dashboard-search {
-  width: 290px;
+  width: 280px;
 }
 
 /* Main Data Table Container */
@@ -261,7 +170,7 @@
   background: var(--bg-surface-hover) !important;
 }
 
-/* Status Pills */
+/* Status Pills & Indicators */
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -287,9 +196,28 @@
   color: #dc2626;
 }
 
+.status-pill.offline {
+  background: rgba(127, 29, 29, 0.2);
+  color: #b91c1c;
+  border: 1px solid rgba(185, 28, 28, 0.4);
+}
+
 body:not(.light-mode) .status-pill.online { color: #4ade80; }
 body:not(.light-mode) .status-pill.warning { color: #fbbf24; }
 body:not(.light-mode) .status-pill.inactive { color: #f87171; }
+body:not(.light-mode) .status-pill.offline { color: #fca5a5; background: rgba(185, 28, 28, 0.25); }
+
+.status-dot-sm {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-online .status-dot-sm { background-color: #22c55e; }
+.status-warning .status-dot-sm { background-color: #f59e0b; }
+.status-inactive .status-dot-sm { background-color: #ef4444; }
+.status-offline .status-dot-sm { background-color: #b91c1c; animation: pulse-dot 1.5s infinite; }
 
 /* Scientific Battery Bar */
 .mini-battery-bar {
@@ -319,6 +247,6 @@ body:not(.light-mode) .status-pill.inactive { color: #f87171; }
 
 .empty-state {
   text-align: center;
-  padding: 3rem 1rem;
+  padding: 3.5rem 1rem;
   color: var(--text-secondary);
 }

@@ -381,8 +381,8 @@ export const getAllLatestReadings = async (): Promise<Record<string, TelemetryRe
     { sensor_id: '1001', timestamp: new Date(now - 10 * 60 * 1000).toISOString(), battery_status: 92, measurement: 6.8 },
     { sensor_id: '1002', timestamp: new Date(now - 25 * 60 * 1000).toISOString(), battery_status: 18, measurement: 8.1 },
     { sensor_id: '1003', timestamp: new Date(now - 2 * 3600 * 1000).toISOString(), battery_status: 74, measurement: 28.5 },
-    { sensor_id: '1004', timestamp: new Date(now - 58 * 3600 * 1000).toISOString(), battery_status: 12, measurement: 32.0 },
-    { sensor_id: '1005', timestamp: new Date(now - 74 * 3600 * 1000).toISOString(), battery_status: 88, measurement: 1.2 },
+    { sensor_id: '1004', timestamp: new Date(now - 74 * 3600 * 1000).toISOString(), battery_status: 8, measurement: 32.0 }, // Offline: >= 3 days & battery < 10%
+    { sensor_id: '1005', timestamp: new Date(now - 52 * 3600 * 1000).toISOString(), battery_status: 88, measurement: 1.2 },  // Inactive: >= 2 days
     { sensor_id: '1006', timestamp: new Date(now - 15 * 60 * 1000).toISOString(), battery_status: 45, measurement: 195.0 },
   ];
 

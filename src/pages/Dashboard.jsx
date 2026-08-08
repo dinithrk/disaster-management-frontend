@@ -7,6 +7,7 @@ import {
   Spin, 
   Drawer, 
   Segmented, 
+  Select, 
   Switch, 
   Tooltip, 
   message 
@@ -29,7 +30,9 @@ import {
   Globe, 
   Zap, 
   Radio, 
-  History 
+  History, 
+  PieChart, 
+  PowerOff 
 } from 'lucide-react';
 
 import { 
@@ -41,14 +44,16 @@ import {
 import TelemetryChart from '../components/UI/TelemetryChart';
 import SystemHealthGauge from '../components/UI/SystemHealthGauge';
 import BatteryDistributionChart from '../components/UI/BatteryDistributionChart';
+import TimelineVisualizationChart from '../components/UI/TimelineVisualizationChart';
+import ThresholdDistributionChart from '../components/UI/ThresholdDistributionChart';
 import './Dashboard.css';
 
 // Helper: Calculate dynamic relative time ("X mins ago", "X hours ago", "X days ago")
 const getRelativeTimeAgo = (timestampStr) => {
-  if (!timestampStr) return { text: 'No Data', isInactive: true, hoursAgo: 999 };
+  if (!timestampStr) return { text: 'No Data', isInactive: true, isOffline: true, hoursAgo: 999 };
 
   const time = new Date(timestampStr).getTime();
-  if (isNaN(time)) return { text: 'Invalid Date', isInactive: true, hoursAgo: 999 };
+  if (isNaN(time)) return { text: 'Invalid Date', isInactive: true, isOffline: true, hoursAgo: 999 };
 
   const now = Date.now();
   const diffMs = Math.max(0, now - time);
@@ -59,33 +64,33 @@ const getRelativeTimeAgo = (timestampStr) => {
   const isInactive = diffHours >= 48; // Inactive if latest reading was >= 2 days ago
 
   if (diffMins < 1) {
-    return { text: 'Just now', isInactive, hoursAgo: 0, rawMs: diffMs };
+    return { text: 'Just now', isInactive: false, isOffline: false, hoursAgo: 0, rawMs: diffMs };
   } else if (diffMins < 60) {
-    return { text: `${diffMins} min${diffMins > 1 ? 's' : ''} ago`, isInactive, hoursAgo: diffHours, rawMs: diffMs };
+    return { text: `${diffMins} min${diffMins > 1 ? 's' : ''} ago`, isInactive: false, isOffline: false, hoursAgo: diffHours, rawMs: diffMs };
   } else if (diffHours < 24) {
-    return { text: `${diffHours} hr${diffHours > 1 ? 's' : ''} ago`, isInactive, hoursAgo: diffHours, rawMs: diffMs };
+    return { text: `${diffHours} hr${diffHours > 1 ? 's' : ''} ago`, isInactive: false, isOffline: false, hoursAgo: diffHours, rawMs: diffMs };
   } else {
-    return { text: `${diffDays} day${diffDays > 1 ? 's' : ''} ago`, isInactive, hoursAgo: diffHours, rawMs: diffMs };
+    return { text: `${diffDays} day${diffDays > 1 ? 's' : ''} ago`, isInactive, isOffline: diffHours >= 72, hoursAgo: diffHours, rawMs: diffMs };
   }
 };
 
 // Helper: Determine threshold status tag and color
 const getThresholdStatus = (sensor, measurement) => {
-  if (measurement === undefined || measurement === null) return { text: 'No Data', color: 'default' };
+  if (measurement === undefined || measurement === null) return { text: 'No Data', color: 'default', severity: 'NORMAL' };
 
   if (measurement >= sensor.threshold_high_critical) {
-    return { text: 'High Critical', color: 'error' };
+    return { text: 'High Critical', color: 'error', severity: 'HIGH_CRITICAL' };
   }
   if (measurement >= sensor.threshold_high_warning) {
-    return { text: 'High Warning', color: 'warning' };
+    return { text: 'High Warning', color: 'warning', severity: 'HIGH_WARNING' };
   }
   if (measurement <= sensor.threshold_low_critical) {
-    return { text: 'Low Critical', color: 'processing' };
+    return { text: 'Low Critical', color: 'processing', severity: 'LOW_CRITICAL' };
   }
   if (measurement <= sensor.threshold_low_warning) {
-    return { text: 'Low Warning', color: 'warning' };
+    return { text: 'Low Warning', color: 'warning', severity: 'LOW_WARNING' };
   }
-  return { text: 'Normal', color: 'success' };
+  return { text: 'Normal', color: 'success', severity: 'NORMAL' };
 };
 
 const Dashboard = () => {
@@ -96,7 +101,8 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('ALL'); // 'ALL' | 'BY_SITE' | 'LOW_BATTERY' | 'INACTIVE'
+  const [activeFilter, setActiveFilter] = useState('ALL'); // 'ALL' | 'BY_SITE' | 'LOW_BATTERY' | 'INACTIVE' | 'OFFLINE'
+  const [selectedSiteFilter, setSelectedSiteFilter] = useState('ALL'); // 'ALL' or site_name
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   // Drawer / Chart detail state
@@ -157,14 +163,19 @@ const Dashboard = () => {
     fetchTelemetry();
   }, [selectedSensor, timeRange]);
 
-  // Enriched Sensors Metrics
+  // Enriched Sensors Metrics with precise Offline Status rule
   const enrichedSensors = useMemo(() => {
     return sensors.map((sensor) => {
       const latestReading = latestReadings[sensor.sensor_id];
       const timeAgo = getRelativeTimeAgo(latestReading?.timestamp);
       const batteryStatus = latestReading?.battery_status ?? null;
+      
       const isLowBattery = batteryStatus !== null && batteryStatus < 25;
-      const isInactive = timeAgo.isInactive;
+      const isInactive = timeAgo.hoursAgo >= 48;
+      
+      // Offline definition: latest reading is >= 3 days ago (72h) AND battery status is below 10% (or missing)
+      const isOffline = timeAgo.hoursAgo >= 72 && (batteryStatus === null || batteryStatus < 10);
+
       const thresholdInfo = getThresholdStatus(sensor, latestReading?.measurement);
 
       return {
@@ -175,29 +186,42 @@ const Dashboard = () => {
         batteryStatus,
         isLowBattery,
         isInactive,
+        isOffline,
         thresholdInfo,
       };
     });
   }, [sensors, latestReadings]);
 
-  // KPI Summary Stats
+  // Unique list of sites for dropdown selector
+  const siteOptions = useMemo(() => {
+    const siteNames = new Set();
+    sensors.forEach((s) => {
+      const name = s.site_name || `Site ${s.site_id}`;
+      siteNames.add(name);
+    });
+    return ['ALL', ...Array.from(siteNames)];
+  }, [sensors]);
+
+  // Analytics sensors list dynamically filtered by Site Selector
+  const siteFilteredSensors = useMemo(() => {
+    if (selectedSiteFilter === 'ALL') return enrichedSensors;
+    return enrichedSensors.filter((s) => (s.site_name || `Site ${s.site_id}`) === selectedSiteFilter);
+  }, [enrichedSensors, selectedSiteFilter]);
+
+  // KPI Summary Stats (Calculated for current site filter context)
   const kpiStats = useMemo(() => {
-    const total = enrichedSensors.length;
-    const lowBattery = enrichedSensors.filter((s) => s.isLowBattery).length;
-    const inactive = enrichedSensors.filter((s) => s.isInactive).length;
-    const active = total - inactive;
+    const total = siteFilteredSensors.length;
+    const lowBattery = siteFilteredSensors.filter((s) => s.isLowBattery).length;
+    const offline = siteFilteredSensors.filter((s) => s.isOffline).length;
+    const inactive = siteFilteredSensors.filter((s) => s.isInactive && !s.isOffline).length;
+    const active = total - (inactive + offline);
     const healthScore = total > 0 ? (active / total) * 100 : 0;
-    return { total, active, lowBattery, inactive, healthScore };
-  }, [enrichedSensors]);
+    return { total, active, lowBattery, inactive, offline, healthScore };
+  }, [siteFilteredSensors]);
 
-  // Timeline Events (Sorted chronologically by latest pulse)
-  const timelineEvents = useMemo(() => {
-    return [...enrichedSensors].sort((a, b) => (a.timeAgo.rawMs || 0) - (b.timeAgo.rawMs || 0));
-  }, [enrichedSensors]);
-
-  // Filter & Search Logic
+  // Filter & Search Logic for Main Table
   const filteredSensors = useMemo(() => {
-    return enrichedSensors.filter((s) => {
+    return siteFilteredSensors.filter((s) => {
       const matchesSearch = 
         !searchQuery ||
         s.sensor_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -208,11 +232,12 @@ const Dashboard = () => {
       if (!matchesSearch) return false;
 
       if (activeFilter === 'LOW_BATTERY') return s.isLowBattery;
-      if (activeFilter === 'INACTIVE') return s.isInactive;
+      if (activeFilter === 'INACTIVE') return s.isInactive && !s.isOffline;
+      if (activeFilter === 'OFFLINE') return s.isOffline;
 
       return true;
     });
-  }, [enrichedSensors, searchQuery, activeFilter]);
+  }, [siteFilteredSensors, searchQuery, activeFilter]);
 
   // Group Sensors by Site Name
   const groupedBySite = useMemo(() => {
@@ -279,7 +304,7 @@ const Dashboard = () => {
           : 'N/A';
         return (
           <Tooltip title={`Exact Timestamp: ${formatted}`}>
-            <span style={{ color: record.isInactive ? '#ef4444' : 'var(--text-secondary)' }}>
+            <span style={{ color: record.isOffline ? '#b91c1c' : record.isInactive ? '#ef4444' : 'var(--text-secondary)' }}>
               {record.timeAgo.text}
             </span>
           </Tooltip>
@@ -298,7 +323,8 @@ const Dashboard = () => {
       render: (val, record) => {
         if (val === null || val === undefined) return <span style={{ color: 'var(--text-muted)' }}>N/A</span>;
         let fillClass = 'battery-good';
-        if (val < 25) fillClass = 'battery-low';
+        if (val < 10) fillClass = 'battery-low';
+        else if (val < 25) fillClass = 'battery-low';
         else if (val < 50) fillClass = 'battery-medium';
 
         return (
@@ -306,7 +332,7 @@ const Dashboard = () => {
             <div className="mini-battery-track">
               <div className={`mini-battery-fill ${fillClass}`} style={{ width: `${val}%` }} />
             </div>
-            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: record.isLowBattery ? '#ef4444' : undefined }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: record.isOffline || record.isLowBattery ? '#ef4444' : undefined }}>
               {val}%
             </span>
           </div>
@@ -318,6 +344,13 @@ const Dashboard = () => {
       title: 'Status',
       key: 'status',
       render: (_, record) => {
+        if (record.isOffline) {
+          return (
+            <span className="status-pill offline">
+              <span className="status-dot-sm" /> Offline
+            </span>
+          );
+        }
         if (record.isInactive) {
           return (
             <span className="status-pill inactive">
@@ -376,7 +409,7 @@ const Dashboard = () => {
             Telemetry Analytics & Monitoring Dashboard
           </h1>
           <p className="dashboard-subtitle">
-            Real-time station telemetry, curved system health gauge, battery distribution, and reading occurrence timeline.
+            Scientific telemetry visualizations, dynamic site categorization, battery distribution, and reading occurrence timeline.
           </p>
         </div>
 
@@ -400,12 +433,12 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Scientific Analytics Row: Health Curved Gauge, Battery Distribution Chart, Timeline */}
+      {/* Scientific Analytics Grid: 4 Dynamic Site-Aware Charts */}
       <div className="analytics-grid">
         {/* Card 1: System Telemetry Health Score Meter */}
         <div className="analytics-card">
           <div className="analytics-card-title">
-            <span><Zap size={16} style={{ color: 'var(--accent-blue)' }} /> System Telemetry Score</span>
+            <span><Zap size={16} style={{ color: 'var(--accent-blue)' }} /> Site Telemetry Score</span>
           </div>
           <SystemHealthGauge 
             score={kpiStats.healthScore} 
@@ -417,49 +450,58 @@ const Dashboard = () => {
         {/* Card 2: Battery Level Telemetry Distribution Chart */}
         <div className="analytics-card">
           <div className="analytics-card-title">
-            <span><BatteryLow size={16} style={{ color: '#ef4444' }} /> Sensor Battery Telemetry Distribution</span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Low Threshold: 25%</span>
+            <span><BatteryLow size={16} style={{ color: '#ef4444' }} /> Battery Distribution</span>
+            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Low: 25%</span>
           </div>
-          <BatteryDistributionChart sensors={enrichedSensors} />
+          <BatteryDistributionChart sensors={siteFilteredSensors} />
         </div>
 
-        {/* Card 3: Recent Telemetry Occurrence Timeline */}
+        {/* Card 3: Timeline Scatter Chart (Reading Occurrence Timeline Visualization) */}
         <div className="analytics-card">
           <div className="analytics-card-title">
             <span><History size={16} style={{ color: 'var(--accent-purple)' }} /> Reading Occurrence Timeline</span>
+            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>0h - 72h+</span>
           </div>
-          <div className="timeline-list">
-            {timelineEvents.map((sensor) => (
-              <div 
-                key={sensor.sensor_id} 
-                className="timeline-item"
-                onClick={() => setSelectedSensor(sensor)}
-              >
-                <div className={`timeline-marker ${sensor.isInactive ? 'inactive' : sensor.isLowBattery ? 'warning' : 'active'}`} />
-                <div className="timeline-content">
-                  <div className="timeline-header">
-                    <span className="timeline-sensor-id">{sensor.sensor_id}</span>
-                    <span className="timeline-time">{sensor.timeAgo.text}</span>
-                  </div>
-                  <div className="timeline-detail">
-                    {sensor.site_name || `Site ${sensor.site_id}`} — <strong>{sensor.latestReading?.measurement !== undefined ? `${sensor.latestReading.measurement} ${sensor.unit_of_measure}` : 'No Data'}</strong>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <TimelineVisualizationChart 
+            sensors={siteFilteredSensors} 
+            onSelectSensor={(id) => {
+              const s = siteFilteredSensors.find((item) => item.sensor_id === id);
+              if (s) setSelectedSensor(s);
+            }} 
+          />
+        </div>
+
+        {/* Card 4: Reading Severity Breakdown Donut Chart */}
+        <div className="analytics-card">
+          <div className="analytics-card-title">
+            <span><PieChart size={16} style={{ color: '#22c55e' }} /> Threshold Breakdown</span>
           </div>
+          <ThresholdDistributionChart sensors={siteFilteredSensors} />
         </div>
       </div>
 
-      {/* Control Bar: Filters & Search */}
+      {/* Control Bar: Filter Pills, Dynamic Site Dropdown, Search */}
       <div className="dashboard-controls">
         <div className="filter-group">
+          {/* Site Selector Dropdown */}
+          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Site Filter:</span>
+          <Select 
+            value={selectedSiteFilter}
+            onChange={(val) => setSelectedSiteFilter(val)}
+            style={{ width: 190 }}
+            options={siteOptions.map((site) => ({
+              label: site === 'ALL' ? '🌐 All Sites' : site,
+              value: site,
+            }))}
+          />
+
           <Segmented
             options={[
-              { label: `All Sensors (${kpiStats.total})`, value: 'ALL' },
+              { label: `All (${kpiStats.total})`, value: 'ALL' },
               { label: 'Categorized by Site', value: 'BY_SITE' },
               { label: `Low Battery (${kpiStats.lowBattery})`, value: 'LOW_BATTERY' },
               { label: `Inactive (${kpiStats.inactive})`, value: 'INACTIVE' },
+              { label: `Offline (${kpiStats.offline})`, value: 'OFFLINE' },
             ]}
             value={activeFilter}
             onChange={(val) => setActiveFilter(val)}
