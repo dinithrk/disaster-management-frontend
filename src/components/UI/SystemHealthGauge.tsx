@@ -33,51 +33,84 @@ const SystemHealthGauge: React.FC<GaugeProps> = ({ score, activeCount, totalCoun
   useEffect(() => {
     if (!chartInstance.current) return;
 
+    const healthColor = score >= 80 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444';
+
     const option: echarts.EChartsOption = {
       backgroundColor: 'transparent',
+      animationDuration: 1200,
+      animationEasingUpdate: 'cubicOut',
       series: [
         {
           type: 'gauge',
-          startAngle: 180,
-          endAngle: 0,
+          startAngle: 200,
+          endAngle: -20,
           min: 0,
           max: 100,
           splitNumber: 5,
           radius: '95%',
-          center: ['50%', '70%'],
+          center: ['50%', '65%'],
           itemStyle: {
-            color: score >= 80 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444',
+            color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+              { offset: 0, color: '#3b82f6' },
+              { offset: 0.5, color: '#8b5cf6' },
+              { offset: 1, color: healthColor },
+            ]),
           },
           progress: {
             show: true,
             roundCap: true,
-            width: 12,
+            width: 14,
           },
           pointer: {
             show: true,
-            length: '60%',
-            width: 4,
+            icon: 'path://M12.8,0.7l12,40.1H0.7L12.8,0.7z',
+            length: '55%',
+            width: 8,
+            offsetCenter: [0, '5%'],
+            itemStyle: {
+              color: healthColor,
+              shadowBlur: 10,
+              shadowColor: healthColor,
+            },
           },
           axisLine: {
             roundCap: true,
             lineStyle: {
-              width: 12,
+              width: 14,
               color: [
-                [1, 'rgba(255, 255, 255, 0.08)'],
+                [1, 'rgba(255, 255, 255, 0.06)'],
               ],
             },
           },
-          axisTick: { show: false },
-          splitLine: { show: false },
-          axisLabel: { show: false },
+          axisTick: {
+            distance: -20,
+            splitNumber: 5,
+            lineStyle: {
+              width: 1.5,
+              color: 'rgba(255, 255, 255, 0.25)',
+            },
+          },
+          splitLine: {
+            distance: -24,
+            length: 10,
+            lineStyle: {
+              width: 2.5,
+              color: 'rgba(255, 255, 255, 0.4)',
+            },
+          },
+          axisLabel: {
+            distance: -38,
+            color: '#a1a1aa',
+            fontSize: 10,
+          },
           title: { show: false },
           detail: {
             valueAnimation: true,
-            offsetCenter: [0, '-15%'],
-            fontSize: 24,
+            offsetCenter: [0, '25%'],
+            fontSize: 32,
             fontWeight: 'bold',
             formatter: '{value}%',
-            color: 'inherit',
+            color: '#ffffff',
           },
           data: [
             {
@@ -92,18 +125,18 @@ const SystemHealthGauge: React.FC<GaugeProps> = ({ score, activeCount, totalCoun
   }, [score]);
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '140px' }}>
+    <div style={{ position: 'relative', width: '100%', height: '230px' }}>
       <div ref={chartRef} style={{ width: '100%', height: '100%' }} />
       <div style={{ 
         position: 'absolute', 
-        bottom: '2px', 
+        bottom: '8px', 
         left: 0, 
         right: 0, 
         textAlign: 'center', 
-        fontSize: '0.78rem', 
+        fontSize: '0.84rem', 
         color: 'var(--text-secondary)' 
       }}>
-        Online: <strong>{activeCount}</strong> / {totalCount} Sensors
+        Online Stations: <strong>{activeCount}</strong> / {totalCount}
       </div>
     </div>
   );

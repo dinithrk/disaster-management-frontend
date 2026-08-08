@@ -37,7 +37,6 @@ const ThresholdDistributionChart: React.FC<DonutProps> = ({ sensors }) => {
   useEffect(() => {
     if (!chartInstance.current || !sensors) return;
 
-    // Count severities
     const countMap: Record<string, { count: number; color: string }> = {
       'Normal': { count: 0, color: '#22c55e' },
       'High Warning': { count: 0, color: '#f97316' },
@@ -59,33 +58,54 @@ const ThresholdDistributionChart: React.FC<DonutProps> = ({ sensors }) => {
       .map(([name, item]) => ({
         name,
         value: item.count,
-        itemStyle: { color: item.color },
+        itemStyle: { 
+          color: item.color,
+          shadowBlur: 8,
+          shadowColor: item.color,
+        },
       }));
 
     const option: echarts.EChartsOption = {
       backgroundColor: 'transparent',
+      animationDuration: 1200,
       tooltip: {
         trigger: 'item',
         backgroundColor: 'rgba(22, 25, 33, 0.95)',
         borderColor: 'rgba(255, 255, 255, 0.12)',
-        formatter: '{b}: <strong>{c} Sensors ({d}%)</strong>',
+        formatter: '{b}: <strong>{c} Stations ({d}%)</strong>',
       },
       legend: {
         orient: 'vertical',
-        right: '2%',
-        top: 'middle',
-        textStyle: { color: '#a1a1aa', fontSize: 10 },
+        right: '5%',
+        top: 'center',
+        textStyle: { color: '#a1a1aa', fontSize: 11 },
+      },
+      title: {
+        text: String(sensors.length),
+        subtext: 'Stations',
+        left: '32%',
+        top: '40%',
+        textAlign: 'center',
+        textStyle: {
+          fontSize: 22,
+          fontWeight: 'bold',
+          color: '#ffffff',
+        },
+        subtextStyle: {
+          fontSize: 11,
+          color: '#a1a1aa',
+        },
       },
       series: [
         {
           type: 'pie',
-          radius: ['45%', '75%'],
-          center: ['35%', '50%'],
+          radius: ['52%', '78%'],
+          center: ['33%', '50%'],
           avoidLabelOverlap: false,
           label: { show: false },
           emphasis: {
             scale: true,
-            scaleSize: 6,
+            scaleSize: 8,
           },
           data,
         },
@@ -95,7 +115,7 @@ const ThresholdDistributionChart: React.FC<DonutProps> = ({ sensors }) => {
     chartInstance.current.setOption(option, false);
   }, [sensors]);
 
-  return <div ref={chartRef} style={{ width: '100%', height: '140px' }} />;
+  return <div ref={chartRef} style={{ width: '100%', height: '230px' }} />;
 };
 
 export default memo(ThresholdDistributionChart);

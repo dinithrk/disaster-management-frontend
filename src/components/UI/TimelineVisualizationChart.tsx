@@ -49,7 +49,6 @@ const TimelineVisualizationChart: React.FC<TimelineProps> = ({ sensors, onSelect
   useEffect(() => {
     if (!chartInstance.current || !sensors) return;
 
-    // Prepare data for Scatter timeline (X = Hours Ago, Y = Sensor ID)
     const yCategories = sensors.map((s) => s.sensor_id);
     
     const seriesData = sensors.map((s, idx) => {
@@ -61,13 +60,18 @@ const TimelineVisualizationChart: React.FC<TimelineProps> = ({ sensors, onSelect
 
       return {
         value: [hoursAgo, idx, s.latestReading?.measurement ?? 0],
-        itemStyle: { color },
+        itemStyle: { 
+          color,
+          shadowBlur: 10,
+          shadowColor: color,
+        },
         sensor: s,
       };
     });
 
     const option: echarts.EChartsOption = {
       backgroundColor: 'transparent',
+      animationDuration: 1000,
       grid: {
         top: 25,
         bottom: 35,
@@ -78,14 +82,15 @@ const TimelineVisualizationChart: React.FC<TimelineProps> = ({ sensors, onSelect
       tooltip: {
         trigger: 'item',
         backgroundColor: 'rgba(22, 25, 33, 0.95)',
-        borderColor: 'rgba(255, 255, 255, 0.12)',
+        borderColor: 'rgba(139, 92, 246, 0.3)',
+        borderWidth: 1,
         formatter: (params: any) => {
           const s = params.data.sensor;
           const val = s.latestReading?.measurement !== undefined ? `${s.latestReading.measurement} ${s.unit_of_measure}` : 'No Data';
           return `
             <div style="padding: 4px 6px;">
-              <div style="font-weight: 600;">Sensor ${s.sensor_id} (${s.site_name || 'Station'})</div>
-              <div style="color: #a1a1aa; font-size: 11px; margin-top: 2px;">
+              <div style="font-weight: 600; color: #ffffff;">Sensor ${s.sensor_id} (${s.site_name || 'Station'})</div>
+              <div style="color: #a1a1aa; font-size: 11px; margin-top: 3px;">
                 Pulse: <strong>${s.timeAgo.text}</strong><br/>
                 Reading: <strong>${val}</strong><br/>
                 Battery: <strong>${s.batteryStatus !== null ? `${s.batteryStatus}%` : 'N/A'}</strong>
@@ -98,7 +103,7 @@ const TimelineVisualizationChart: React.FC<TimelineProps> = ({ sensors, onSelect
         type: 'value',
         name: 'Hours Ago',
         nameLocation: 'middle',
-        nameGap: 20,
+        nameGap: 22,
         inverse: true, // 0 hours ago on right, older on left
         min: 0,
         max: 80,
@@ -110,13 +115,26 @@ const TimelineVisualizationChart: React.FC<TimelineProps> = ({ sensors, onSelect
         type: 'category',
         data: yCategories,
         axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.15)' } },
-        axisLabel: { color: '#a1a1aa', fontSize: 10 },
+        axisLabel: { color: '#a1a1aa', fontSize: 11 },
       },
       series: [
         {
           type: 'scatter',
-          symbolSize: 14,
+          symbolSize: 16,
           data: seriesData,
+          markArea: {
+            silent: true,
+            data: [
+              [
+                { xAxis: 0, itemStyle: { color: 'rgba(34, 197, 94, 0.03)' } },
+                { xAxis: 48 },
+              ],
+              [
+                { xAxis: 48, itemStyle: { color: 'rgba(239, 68, 68, 0.05)' } },
+                { xAxis: 80 },
+              ],
+            ],
+          },
           markLine: {
             silent: true,
             animation: false,
@@ -141,7 +159,7 @@ const TimelineVisualizationChart: React.FC<TimelineProps> = ({ sensors, onSelect
     chartInstance.current.on('click', handleClick);
   }, [sensors, onSelectSensor]);
 
-  return <div ref={chartRef} style={{ width: '100%', height: '170px' }} />;
+  return <div ref={chartRef} style={{ width: '100%', height: '230px' }} />;
 };
 
 export default memo(TimelineVisualizationChart);

@@ -40,49 +40,69 @@ const BatteryDistributionChart: React.FC<BatteryChartProps> = ({ sensors }) => {
 
     const option: echarts.EChartsOption = {
       backgroundColor: 'transparent',
+      animationDuration: 1000,
       grid: {
-        top: 20,
-        bottom: 30,
-        left: 35,
-        right: 15,
+        top: 25,
+        bottom: 35,
+        left: 45,
+        right: 20,
         containLabel: false,
       },
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
         backgroundColor: 'rgba(22, 25, 33, 0.95)',
-        borderColor: 'rgba(255, 255, 255, 0.12)',
+        borderColor: 'rgba(59, 130, 246, 0.3)',
+        borderWidth: 1,
         formatter: (params: any) => {
           const item = params[0];
-          return `Sensor <strong>${item.name}</strong>: ${item.value}% Battery`;
+          return `
+            <div style="padding: 4px 6px;">
+              <div style="font-weight: 600; color: #a1a1aa; margin-bottom: 2px;">Sensor ${item.name}</div>
+              <div>Battery Status: <strong>${item.value}%</strong></div>
+            </div>
+          `;
         },
       },
       xAxis: {
         type: 'category',
         data: xData,
         axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.15)' } },
-        axisLabel: { color: '#a1a1aa', fontSize: 10 },
+        axisLabel: { color: '#a1a1aa', fontSize: 11 },
       },
       yAxis: {
         type: 'value',
         min: 0,
         max: 100,
         axisLine: { show: false },
-        axisLabel: { color: '#a1a1aa', fontSize: 10, formatter: '{value}%' },
+        axisLabel: { color: '#a1a1aa', fontSize: 11, formatter: '{value}%' },
         splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.05)' } },
       },
       series: [
         {
           type: 'bar',
           data: yData,
-          barWidth: '40%',
+          barWidth: '42%',
           itemStyle: {
-            borderRadius: [4, 4, 0, 0],
+            borderRadius: [6, 6, 0, 0],
             color: (params: any) => {
               const val = params.value;
-              if (val < 25) return '#ef4444';
-              if (val < 50) return '#f59e0b';
-              return '#22c55e';
+              if (val < 25) {
+                return new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: '#ef4444' },
+                  { offset: 1, color: 'rgba(239, 68, 68, 0.2)' },
+                ]);
+              }
+              if (val < 50) {
+                return new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: '#f59e0b' },
+                  { offset: 1, color: 'rgba(245, 158, 11, 0.2)' },
+                ]);
+              }
+              return new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: '#22c55e' },
+                { offset: 1, color: 'rgba(34, 197, 94, 0.2)' },
+              ]);
             },
           },
           markLine: {
@@ -92,8 +112,8 @@ const BatteryDistributionChart: React.FC<BatteryChartProps> = ({ sensors }) => {
               {
                 yAxis: 25,
                 name: 'Low Battery (25%)',
-                lineStyle: { color: '#ef4444', type: 'dashed', width: 1 },
-                label: { formatter: '25% Limit', color: '#ef4444', fontSize: 9 },
+                lineStyle: { color: '#ef4444', type: 'dashed', width: 1.5 },
+                label: { formatter: '25% Low Threshold', color: '#ef4444', fontSize: 10, position: 'end' },
               },
             ],
           },
@@ -104,7 +124,7 @@ const BatteryDistributionChart: React.FC<BatteryChartProps> = ({ sensors }) => {
     chartInstance.current.setOption(option, false);
   }, [sensors]);
 
-  return <div ref={chartRef} style={{ width: '100%', height: '140px' }} />;
+  return <div ref={chartRef} style={{ width: '100%', height: '230px' }} />;
 };
 
 export default memo(BatteryDistributionChart);
